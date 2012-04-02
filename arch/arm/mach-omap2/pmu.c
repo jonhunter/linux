@@ -12,15 +12,106 @@
  * (at your option) any later version.
  */
 #include <asm/pmu.h>
+#include <asm/cti.h>
 
 #include "soc.h"
 #include "omap_hwmod.h"
 #include "omap_device.h"
 
+#include "omap44xx.h"
+
+#define OMAP44XX_IRQ_CTI0		(1 + OMAP44XX_IRQ_GIC_START)
+#define OMAP44XX_IRQ_CTI1		(2 + OMAP44XX_IRQ_GIC_START)
+
 static char *omap2_pmu_oh_names[] = {"mpu"};
 static char *omap3_pmu_oh_names[] = {"mpu", "debugss"};
 static char *omap4430_pmu_oh_names[] = {"l3_main_3", "l3_instr", "debugss"};
 static struct platform_device *omap_pmu_dev;
+static struct arm_pmu_platdata omap_pmu_data;
+static struct cti omap4_cti[2];
+
+/**
+ * omap4_pmu_runtime_resume - PMU runtime resume callback
+ * @dev		OMAP PMU device
+ *
+ * Platform specific PMU runtime resume callback for OMAP4430 devices to
+ * configure the cross trigger interface for routing PMU interrupts. This
+ * is called by the PM runtime framework.
+ */
+static int omap4_pmu_runtime_resume(struct device *dev)
+{
+	/* configure CTI0 for PMU IRQ routing */
+	cti_unlock(&omap4_cti[0]);
+	cti_map_trigger(&omap4_cti[0], 1, 6, 2);
+	cti_enable(&omap4_cti[0]);
+
+	/* configure CTI1 for PMU IRQ routing */
+	cti_unlock(&omap4_cti[1]);
+	cti_map_trigger(&omap4_cti[1], 1, 6, 3);
+	cti_enable(&omap4_cti[1]);
+
+	return 0;
+}
+
+/**
+ * omap4_pmu_runtime_suspend - PMU runtime suspend callback
+ * @dev		OMAP PMU device
+ *
+ * Platform specific PMU runtime suspend callback for OMAP4430 devices to
+ * disable the cross trigger interface interrupts. This is called by the
+ * PM runtime framework.
+ */
+static int omap4_pmu_runtime_suspend(struct device *dev)
+{
+	cti_disable(&omap4_cti[0]);
+	cti_disable(&omap4_cti[1]);
+
+	return 0;
+}
+
+/**
+ * omap4_pmu_handle_irq - PMU IRQ Handler
+ * @irq		OMAP CTI IRQ number
+ * @dev		OMAP PMU device
+ * @handler	ARM PMU interrupt handler
+ *
+ * Platform specific PMU IRQ handler for OMAP4430 devices that route PMU
+ * interrupts via cross trigger interface. This is called by the PMU driver.
+ */
+static irqreturn_t
+omap4_pmu_handle_irq(int irq, void *dev, irq_handler_t handler)
+{
+	if (irq == OMAP44XX_IRQ_CTI0)
+		cti_irq_ack(&omap4_cti[0]);
+	else if (irq == OMAP44XX_IRQ_CTI1)
+		cti_irq_ack(&omap4_cti[1]);
+
+	return handler(irq, dev);
+}
+
+/**
+ * omap4_init_cti - initialise cross trigger interface instances
+ *
+ * Initialises two cross trigger interface (CTI) instances in preparation
+ * for routing PMU interrupts to the OMAP interrupt controller. Note that
+ * this does not configure the actual CTI hardware but just the CTI
+ * software structures to be used.
+ */
+static int __init omap4_init_cti(void)
+{
+	omap4_cti[0].base = ioremap(OMAP44XX_CTI0_BASE, SZ_4K);
+	omap4_cti[1].base = ioremap(OMAP44XX_CTI1_BASE, SZ_4K);
+
+	if (!omap4_cti[0].base || !omap4_cti[1].base) {
+		pr_err("ioremap for OMAP4 CTI failed\n");
+		return -ENOMEM;
+	}
+
+	cti_init(&omap4_cti[0], omap4_cti[0].base, OMAP44XX_IRQ_CTI0, 6);
+	cti_init(&omap4_cti[1], omap4_cti[1].base, OMAP44XX_IRQ_CTI1, 6);
+
+	return 0;
+}
 
 /**
  * omap2_init_pmu - creates and registers PMU platform device
@@ -48,7 +139,9 @@ static int __init omap2_init_pmu(unsigned oh_num, char *oh_names[])
 		}
 	}
 
-	omap_pmu_dev = omap_device_build_ss(dev_name, -1, oh, oh_num, NULL, 0);
+	omap_pmu_dev = omap_device_build_ss(dev_name, -1, oh, oh_num,
+					    &omap_pmu_data,
+					    sizeof(omap_pmu_data));
 	WARN(IS_ERR(omap_pmu_dev), "Can't build omap_device for %s.\n",
 	     dev_name);
 
@@ -60,6 +153,7 @@ static int __init omap2_init_pmu(unsigned oh_num, char *oh_names[])
 
 static int __init omap_init_pmu(void)
 {
+	int r;
 	unsigned oh_num;
 	char **oh_names;
 
@@ -73,11 +167,15 @@ static int __init omap_init_pmu(void)
 	 * OMAP4460/70:	mpu, debugss
 	 */
 	if (cpu_is_omap443x()) {
+		r = omap4_init_cti();
+		if (r)
+			return r;
+
+		omap_pmu_data.handle_irq = omap4_pmu_handle_irq;
+		omap_pmu_data.runtime_resume = omap4_pmu_runtime_resume;
+		omap_pmu_data.runtime_suspend = omap4_pmu_runtime_suspend;
 		oh_num = ARRAY_SIZE(omap4430_pmu_oh_names);
 		oh_names = omap4430_pmu_oh_names;
-		/* XXX Remove the next two lines when CTI driver available */
-		pr_info("ARM PMU: not yet supported on OMAP4430 due to missing CTI driver\n");
-		return 0;
 	} else if (cpu_is_omap34xx() || cpu_is_omap44xx()) {
 		oh_num = ARRAY_SIZE(omap3_pmu_oh_names);
 		oh_names = omap3_pmu_oh_names;
