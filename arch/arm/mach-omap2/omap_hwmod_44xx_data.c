@@ -512,10 +512,17 @@ static struct omap_hwmod_class omap44xx_debugss_hwmod_class = {
 };
 
 /* debugss */
+static struct omap_hwmod_irq_info omap44xx_debugss_irqs[] = {
+	{ .name = "cti0", .irq = 1 + OMAP44XX_IRQ_GIC_START },
+	{ .name = "cti1", .irq = 2 + OMAP44XX_IRQ_GIC_START },
+	{ .irq = -1 }
+};
+
 static struct omap_hwmod omap44xx_debugss_hwmod = {
 	.name		= "debugss",
 	.class		= &omap44xx_debugss_hwmod_class,
 	.clkdm_name	= "emu_sys_clkdm",
+	.mpu_irqs	= omap44xx_debugss_irqs,
 	.main_clk	= "trace_clk_div_ck",
 	.prcm = {
 		.omap4 = {
@@ -2632,8 +2639,6 @@ static struct omap_hwmod_irq_info omap44xx_mpu_irqs[] = {
 	{ .name = "pmu0", .irq = 54 + OMAP44XX_IRQ_GIC_START },
 	{ .name = "pmu1", .irq = 55 + OMAP44XX_IRQ_GIC_START },
 	{ .name = "pl310", .irq = 0 + OMAP44XX_IRQ_GIC_START },
-	{ .name = "cti0", .irq = 1 + OMAP44XX_IRQ_GIC_START },
-	{ .name = "cti1", .irq = 2 + OMAP44XX_IRQ_GIC_START },
 	{ .irq = -1 }
 };
 
