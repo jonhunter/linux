@@ -59,6 +59,29 @@
 		interrupts = <1 13 0x304>;
 	};
 
+	amba {
+		compatible = "arm,amba-bus";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		cti0: cti@0x54148000 {
+			compatible = "arm,primecell";
+			interrupts = <0 1 0x4>;
+			reg = <0x54148000 0x1000>;
+			arm,cti-name = "cti0";
+			arm,primecell-periphid = <0x003bb906>;
+		};
+
+		cti1: cti@0x54149000 {
+			compatible = "arm,primecell";
+			interrupts = <0 2 0x4>;
+			reg = <0x54149000 0x1000>;
+			arm,cti-name = "cti1";
+			arm,primecell-periphid = <0x003bb906>;
+		};
+	};
+
 	/*
 	 * The soc node represents the soc top level view. It is uses for IPs
 	 * that are not memory mapped in the MPU view or for the MPU itself.
