@@ -1,0 +1,20 @@
+#
+# AMBA Devices
+#
+
+menu "AMBA devices"
+
+config ARM_AMBA_CTI
+	bool "Cross-Trigger Interface"
+	depends on ARM && OF
+	select ARM_AMBA
+	help
+	  The ARM Cross Trigger Interface provides a way to route events
+	  between processor modules. For example, debug events from one
+	  processor can be broadcasted to other processors. The events that
+	  can be routed between processors are specific to the device.
+	  Currently, the driver only supports looking-up the CTI hardware
+	  information (base address and interrupts) from device-tree (and
+	  hence, is dependent upon CONFIG_OF).
+
+endmenu
