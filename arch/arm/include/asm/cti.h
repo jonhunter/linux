@@ -2,6 +2,7 @@
 #define __ASMARM_CTI_H
 
 #include	<asm/io.h>
+#include	<asm/hardware/coresight.h>
 
 /* The registers' definition is from section 3.2 of
  * Embedded Cross Trigger Revision: r0p0
@@ -28,17 +29,6 @@
 #define		CTIPCELLID1		0xFF4
 #define		CTIPCELLID2		0xFF8
 #define		CTIPCELLID3		0xFFC
-
-/* The below are from section 3.6.4 of
- * CoreSight v1.0 Architecture Specification
- */
-#define		LOCKACCESS		0xFB0
-#define		LOCKSTATUS		0xFB4
-
-/* write this value to LOCKACCESS will unlock the module, and
- * other value will lock the module
- */
-#define		LOCKCODE		0xC5ACCE55
 
 /**
  * struct cti - cross trigger interface struct
@@ -146,7 +136,7 @@ static inline void cti_irq_ack(struct cti *cti)
  */
 static inline void cti_unlock(struct cti *cti)
 {
-	__raw_writel(LOCKCODE, cti->base + LOCKACCESS);
+	coresight_unlock(cti->base);
 }
 
 /**
@@ -158,6 +148,6 @@ static inline void cti_unlock(struct cti *cti)
  */
 static inline void cti_lock(struct cti *cti)
 {
-	__raw_writel(~LOCKCODE, cti->base + LOCKACCESS);
+	coresight_lock(cti->base);
 }
 #endif

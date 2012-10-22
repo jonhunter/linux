@@ -141,17 +141,17 @@
 #define ETBFF_TRIGEVT		BIT(9)
 #define ETBFF_TRIGFL		BIT(10)
 
-#define etb_writel(t, v, x) \
-	(__raw_writel((v), (t)->etb_regs + (x)))
+#define etb_writel(t, v, x) (__raw_writel((v), (t)->etb_regs + (x)))
 #define etb_readl(t, x) (__raw_readl((t)->etb_regs + (x)))
 
-#define etm_lock(t) do { etm_writel((t), 0, CSMR_LOCKACCESS); } while (0)
-#define etm_unlock(t) \
-	do { etm_writel((t), UNLOCK_MAGIC, CSMR_LOCKACCESS); } while (0)
+#define etb_lock(t) coresight_lock((t)->etb_regs)
+#define etb_unlock(t) coresight_unlock((t)->etb_regs)
+#define etm_lock(t) coresight_lock((t)->etm_regs)
+#define etm_unlock(t) coresight_unlock((t)->etm_regs)
 
-#define etb_lock(t) do { etb_writel((t), 0, CSMR_LOCKACCESS); } while (0)
-#define etb_unlock(t) \
-	do { etb_writel((t), UNLOCK_MAGIC, CSMR_LOCKACCESS); } while (0)
+#define coresight_lock(base) (__raw_writel(0, base + CSMR_LOCKACCESS))
+#define coresight_unlock(base) \
+	(__raw_writel(UNLOCK_MAGIC, base + CSMR_LOCKACCESS))
 
 #endif /* __ASM_HARDWARE_CORESIGHT_H */
 
