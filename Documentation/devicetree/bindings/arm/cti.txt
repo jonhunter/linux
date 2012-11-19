@@ -1,0 +1,32 @@
+* ARM Cross Trigger Interface (CTI)
+
+The ARM Cross Trigger Interface provides a way to route events between
+processor modules. For example, debug events from one processor can be
+broadcasted to other processors. The events that can be routed between
+processors are specific to the device.
+
+Required properties:
+
+- compatible:			Should be "arm,primecell".
+- interrupts:			Interrupt associated with CTI module.
+- reg:				Contains timer register address range (base
+				address and length).
+- arm,cti-name:			A unique name for the CTI module, that will be
+				used when requesting the CTI module instance.
+
+
+Optional properties:
+
+- arm-primecell-periphid:	Primecell peripheral ID associated with CTI
+				module.
+
+
+Example:
+
+cti0: cti@0x54148000 {
+	compatible = "arm,primecell";
+	interrupts = <0 1 0x4>;
+	reg = <0x54148000 0x1000>;
+	arm,cti-name = "cti0";
+	arm,primecell-periphid = <0x003bb906>;
+};
