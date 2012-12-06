@@ -1940,6 +1940,7 @@ static struct omap_clk omap44xx_clks[] = {
 	CLK("4903c000.timer",	"timer_sys_ck",	&syc_clk_div_ck,	CK_443X),
 	CLK("4903e000.timer",	"timer_sys_ck",	&syc_clk_div_ck,	CK_443X),
 	CLK(NULL,	"cpufreq_ck",	&dpll_mpu_ck,	CK_443X),
+	CLK(NULL,	"apb_pclk",		&trace_clk_div_ck,	CK_443X),
 };
 
 static const char *enable_init_clks[] = {
