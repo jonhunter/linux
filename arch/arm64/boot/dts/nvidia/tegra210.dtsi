@@ -707,6 +707,18 @@
 		#size-cells = <1>;
 		ranges = <0x702c0000 0x0 0x702c0000 0x00040000>;
 		status = "disabled";
+
+		agic: interrupt-controller@702f9000 {
+			compatible = "nvidia,tegra210-agic";
+			#interrupt-cells = <3>;
+			interrupt-controller;
+			reg = <0x702f9000 0x2000>,
+			      <0x702fa000 0x2000>;
+			interrupts = <0 102 0xf04>;
+			clocks = <&tegra_car TEGRA210_CLK_APE>;
+			clock-names = "clk";
+			status = "disabled";
+		};
 	};
 
 	spi@70410000 {
