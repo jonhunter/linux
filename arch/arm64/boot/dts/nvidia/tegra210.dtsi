@@ -588,7 +588,8 @@
 		powergates {
 			pd_audio: aud {
 				clocks = <&tegra_car TEGRA210_CLK_APE>,
-					 <&tegra_car TEGRA210_CLK_APB2APE>;
+					 <&tegra_car TEGRA210_CLK_APB2APE>,
+					 <&tegra_car TEGRA210_CLK_APE_SLCG_OVR>;
 				resets = <&tegra_car 198>;
 				#power-domain-cells = <0>;
 			};
