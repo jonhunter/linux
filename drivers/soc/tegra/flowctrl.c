@@ -1,7 +1,7 @@
 /*
- * arch/arm/mach-tegra/flowctrl.c
+ * drivers/soc/tegra/flowctrl.c
  *
- * functions and macros to control the flowcontroller
+ * Functions and macros to control the flowcontroller
  *
  * Copyright (c) 2010-2012, NVIDIA Corporation. All rights reserved.
  *
@@ -25,9 +25,9 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 
+#include <soc/tegra/common.h>
+#include <soc/tegra/flowctrl.h>
 #include <soc/tegra/fuse.h>
-
-#include "flowctrl.h"
 
 static u8 flowctrl_offset_halt_cpu[] = {
 	FLOW_CTRL_HALT_CPU0_EVENTS,
@@ -154,12 +154,15 @@ static const struct of_device_id matches[] __initconst = {
 	{ }
 };
 
-void __init tegra_flowctrl_init(void)
+static int __init tegra_flowctrl_init(void)
 {
 	/* hardcoded fallback if device tree node is missing */
 	unsigned long base = 0x60007000;
 	unsigned long size = SZ_4K;
 	struct device_node *np;
+
+	if (!soc_is_tegra())
+		return 0;
 
 	np = of_find_matching_node(NULL, matches);
 	if (np) {
@@ -174,4 +177,10 @@ void __init tegra_flowctrl_init(void)
 	}
 
 	tegra_flowctrl_base = ioremap_nocache(base, size);
+
+	if (!tegra_flowctrl_base)
+		return -ENXIO;
+
+	return 0;
 }
+early_initcall(tegra_flowctrl_init);
