@@ -147,6 +147,8 @@ void flowctrl_cpu_suspend_exit(unsigned int cpuid)
 }
 
 static const struct of_device_id matches[] __initconst = {
+	{ .compatible = "nvidia,tegra210-flowctrl" },
+	{ .compatible = "nvidia,tegra132-flowctrl" },
 	{ .compatible = "nvidia,tegra124-flowctrl" },
 	{ .compatible = "nvidia,tegra114-flowctrl" },
 	{ .compatible = "nvidia,tegra30-flowctrl" },
