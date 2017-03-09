@@ -47,6 +47,9 @@ static void __iomem *tegra_flowctrl_base;
 
 static void flowctrl_update(u8 offset, u32 value)
 {
+	if (WARN_ONCE(!tegra_flowctrl_base, "Tegra flowctrl not supported!"))
+		return;
+
 	writel(value, tegra_flowctrl_base + offset);
 
 	/* ensure the update has reached the flow controller */
@@ -57,6 +60,9 @@ static void flowctrl_update(u8 offset, u32 value)
 u32 flowctrl_read_cpu_csr(unsigned int cpuid)
 {
 	u8 offset = flowctrl_offset_cpu_csr[cpuid];
+
+	if (WARN_ONCE(!tegra_flowctrl_base, "Tegra flowctrl not supported!"))
+		return 0;
 
 	return readl(tegra_flowctrl_base + offset);
 }
