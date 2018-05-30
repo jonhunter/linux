@@ -18,6 +18,7 @@
 #include <linux/phy/tegra/xusb.h>
 #include <linux/platform_device.h>
 #include <linux/pm.h>
+#include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
 #include <linux/reset.h>
@@ -193,6 +194,11 @@ struct tegra_xusb {
 
 	struct reset_control *host_rst;
 	struct reset_control *ss_rst;
+
+	struct device *genpd_dev_host;
+	struct device *genpd_dev_ss;
+	struct device_link *genpd_dl_host;
+	struct device_link *genpd_dl_ss;
 
 	struct phy **phys;
 	unsigned int num_phys;
@@ -928,6 +934,106 @@ static int tegra_xusb_load_firmware(struct tegra_xusb *tegra)
 	return 0;
 }
 
+static void tegra_xusb_powerdomain_remove(struct device *dev,
+					  struct tegra_xusb *tegra)
+{
+	if (of_property_read_bool(dev->of_node, "power-domains")) {
+		if (tegra->genpd_dev_host)
+			dev_pm_domain_detach(tegra->genpd_dev_host, true);
+		if (tegra->genpd_dev_ss)
+			dev_pm_domain_detach(tegra->genpd_dev_ss, true);
+		if (tegra->genpd_dl_host)
+			device_link_del(tegra->genpd_dl_host);
+		if (tegra->genpd_dl_ss)
+			device_link_del(tegra->genpd_dl_ss);
+	} else {
+		tegra_powergate_power_off(TEGRA_POWERGATE_XUSBC);
+		tegra_powergate_power_off(TEGRA_POWERGATE_XUSBA);
+	}
+}
+
+static int tegra_xusb_powerdomain_init(struct device *dev,
+				       struct tegra_xusb *tegra)
+{
+	int err;
+
+	if (of_property_read_bool(dev->of_node, "power-domains")) {
+		tegra->genpd_dev_host = genpd_dev_pm_attach_by_name(dev,
+								"xusb_host");
+		if (IS_ERR(tegra->genpd_dev_host)) {
+			err = PTR_ERR(tegra->genpd_dev_host);
+			dev_err(dev, "failed to get host pm-domain: %d\n", err);
+			return err;
+		}
+
+		tegra->genpd_dev_ss = genpd_dev_pm_attach_by_name(dev,
+								  "xusb_ss");
+		if (IS_ERR(tegra->genpd_dev_ss)) {
+			tegra_xusb_powerdomain_remove(dev, tegra);
+			err = PTR_ERR(tegra->genpd_dev_ss);
+			dev_err(dev, "failed to get superspeed pm-domain: %d\n",
+				err);
+			return err;
+		}
+
+		tegra->genpd_dl_host = device_link_add(dev,
+						       tegra->genpd_dev_host,
+						       DL_FLAG_PM_RUNTIME |
+						       DL_FLAG_STATELESS);
+		if (!tegra->genpd_dl_host) {
+			tegra_xusb_powerdomain_remove(dev, tegra);
+			dev_err(dev, "adding host device link failed!\n");
+			return -ENODEV;
+		}
+
+		tegra->genpd_dl_ss = device_link_add(dev,
+						     tegra->genpd_dev_ss,
+						     DL_FLAG_PM_RUNTIME |
+						     DL_FLAG_STATELESS);
+		if (!tegra->genpd_dl_ss) {
+			tegra_xusb_powerdomain_remove(dev, tegra);
+			dev_err(dev, "adding superspeed device link failed!\n");
+			return -ENODEV;
+		}
+	} else {
+		tegra->host_rst = devm_reset_control_get(dev, "xusb_host");
+		if (IS_ERR(tegra->host_rst)) {
+			err = PTR_ERR(tegra->host_rst);
+			dev_err(dev, "failed to get xusb_host reset: %d\n",
+				err);
+			return err;
+		}
+
+		tegra->ss_rst = devm_reset_control_get(dev, "xusb_ss");
+		if (IS_ERR(tegra->ss_rst)) {
+			err = PTR_ERR(tegra->ss_rst);
+			dev_err(dev, "failed to get xusb_ss reset: %d\n", err);
+			return err;
+		}
+
+		err = tegra_powergate_sequence_power_up(TEGRA_POWERGATE_XUSBA,
+							tegra->ss_clk,
+							tegra->ss_rst);
+		if (err) {
+			dev_err(dev, "failed to enable XUSBA domain: %d\n",
+				err);
+			return err;
+		}
+
+		err = tegra_powergate_sequence_power_up(TEGRA_POWERGATE_XUSBC,
+							tegra->host_clk,
+							tegra->host_rst);
+		if (err) {
+			tegra_powergate_power_off(TEGRA_POWERGATE_XUSBA);
+			dev_err(dev, "failed to enable XUSBC domain: %d\n",
+				err);
+			return err;
+		}
+	}
+
+	return 0;
+}
+
 static int tegra_xusb_probe(struct platform_device *pdev)
 {
 	struct tegra_xusb_mbox_msg msg;
@@ -1038,48 +1144,15 @@ static int tegra_xusb_probe(struct platform_device *pdev)
 		goto put_padctl;
 	}
 
-	if (!pdev->dev.pm_domain) {
-		tegra->host_rst = devm_reset_control_get(&pdev->dev,
-							 "xusb_host");
-		if (IS_ERR(tegra->host_rst)) {
-			err = PTR_ERR(tegra->host_rst);
-			dev_err(&pdev->dev,
-				"failed to get xusb_host reset: %d\n", err);
-			goto put_padctl;
-		}
-
-		tegra->ss_rst = devm_reset_control_get(&pdev->dev, "xusb_ss");
-		if (IS_ERR(tegra->ss_rst)) {
-			err = PTR_ERR(tegra->ss_rst);
-			dev_err(&pdev->dev, "failed to get xusb_ss reset: %d\n",
-				err);
-			goto put_padctl;
-		}
-
-		err = tegra_powergate_sequence_power_up(TEGRA_POWERGATE_XUSBA,
-							tegra->ss_clk,
-							tegra->ss_rst);
-		if (err) {
-			dev_err(&pdev->dev,
-				"failed to enable XUSBA domain: %d\n", err);
-			goto put_padctl;
-		}
-
-		err = tegra_powergate_sequence_power_up(TEGRA_POWERGATE_XUSBC,
-							tegra->host_clk,
-							tegra->host_rst);
-		if (err) {
-			dev_err(&pdev->dev,
-				"failed to enable XUSBC domain: %d\n", err);
-			goto disable_xusba;
-		}
-	}
+	err = tegra_xusb_powerdomain_init(&pdev->dev, tegra);
+	if (err)
+		goto put_padctl;
 
 	tegra->supplies = devm_kcalloc(&pdev->dev, tegra->soc->num_supplies,
 				       sizeof(*tegra->supplies), GFP_KERNEL);
 	if (!tegra->supplies) {
 		err = -ENOMEM;
-		goto disable_xusbc;
+		goto remove_powerdomains;
 	}
 
 	for (i = 0; i < tegra->soc->num_supplies; i++)
@@ -1089,7 +1162,7 @@ static int tegra_xusb_probe(struct platform_device *pdev)
 				      tegra->supplies);
 	if (err) {
 		dev_err(&pdev->dev, "failed to get regulators: %d\n", err);
-		goto disable_xusbc;
+		goto remove_powerdomains;
 	}
 
 	for (i = 0; i < tegra->soc->num_types; i++)
@@ -1099,7 +1172,7 @@ static int tegra_xusb_probe(struct platform_device *pdev)
 				   sizeof(*tegra->phys), GFP_KERNEL);
 	if (!tegra->phys) {
 		err = -ENOMEM;
-		goto disable_xusbc;
+		goto remove_powerdomains;
 	}
 
 	for (i = 0, k = 0; i < tegra->soc->num_types; i++) {
@@ -1115,7 +1188,7 @@ static int tegra_xusb_probe(struct platform_device *pdev)
 					"failed to get PHY %s: %ld\n", prop,
 					PTR_ERR(phy));
 				err = PTR_ERR(phy);
-				goto disable_xusbc;
+				goto remove_powerdomains;
 			}
 
 			tegra->phys[k++] = phy;
@@ -1126,7 +1199,7 @@ static int tegra_xusb_probe(struct platform_device *pdev)
 				    dev_name(&pdev->dev));
 	if (!tegra->hcd) {
 		err = -ENOMEM;
-		goto disable_xusbc;
+		goto remove_powerdomains;
 	}
 
 	/*
@@ -1222,12 +1295,8 @@ put_rpm:
 disable_rpm:
 	pm_runtime_disable(&pdev->dev);
 	usb_put_hcd(tegra->hcd);
-disable_xusbc:
-	if (!pdev->dev.pm_domain)
-		tegra_powergate_power_off(TEGRA_POWERGATE_XUSBC);
-disable_xusba:
-	if (!pdev->dev.pm_domain)
-		tegra_powergate_power_off(TEGRA_POWERGATE_XUSBA);
+remove_powerdomains:
+	tegra_xusb_powerdomain_remove(&pdev->dev, tegra);
 put_padctl:
 	tegra_xusb_padctl_put(tegra->padctl);
 	return err;
