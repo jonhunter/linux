@@ -915,7 +915,7 @@ static int soc_bind_dai_link(struct snd_soc_card *card,
 
 	/* find one from the set of registered platforms */
 	for_each_component(component) {
-		if (!snd_soc_is_matching_component(dai_link->platform,
+		if (!snd_soc_is_matching_component(&dai_link->platform,
 						   component))
 			continue;
 
@@ -1026,21 +1026,18 @@ static void soc_remove_dai_links(struct snd_soc_card *card)
 static int snd_soc_init_platform(struct snd_soc_card *card,
 				 struct snd_soc_dai_link *dai_link)
 {
-	struct snd_soc_dai_link_component *platform = dai_link->platform;
+	struct snd_soc_dai_link_component *platform = &dai_link->platform;
+
 	/*
 	 * FIXME
 	 *
 	 * this function should be removed in the future
 	 */
 	/* convert Legacy platform link */
-	if (!platform) {
-		platform = devm_kzalloc(card->dev,
-				sizeof(struct snd_soc_dai_link_component),
-				GFP_KERNEL);
-		if (!platform)
-			return -ENOMEM;
+	if (dai_link->platform_name || dai_link->platform_of_node) {
+		dev_dbg(card->dev,
+			"ASoC: Defaulting to legacy platform data!\n");
 
-		dai_link->platform	= platform;
 		platform->name		= dai_link->platform_name;
 		platform->of_node	= dai_link->platform_of_node;
 		platform->dai_name	= NULL;
@@ -1122,7 +1119,7 @@ static int soc_init_dai_link(struct snd_soc_card *card,
 	 * Platform may be specified by either name or OF node, but
 	 * can be left unspecified, and a dummy platform will be used.
 	 */
-	if (link->platform->name && link->platform->of_node) {
+	if (link->platform.name && link->platform.of_node) {
 		dev_err(card->dev,
 			"ASoC: Both platform name/of_node are set for %s\n",
 			link->name);
@@ -1133,7 +1130,7 @@ static int soc_init_dai_link(struct snd_soc_card *card,
 	 * Defer card registartion if platform dai component is not added to
 	 * component list.
 	 */
-	if (!soc_find_component(link->platform->of_node, link->platform->name))
+	if (!soc_find_component(link->platform.of_node, link->platform.name))
 		return -EPROBE_DEFER;
 
 	/*
@@ -1936,7 +1933,7 @@ static void soc_check_tplg_fes(struct snd_soc_card *card)
 				dev_err(card->dev, "init platform error");
 				continue;
 			}
-			dai_link->platform->name = component->name;
+			dai_link->platform.name = component->name;
 
 			/* convert non BE into BE */
 			dai_link->no_pcm = 1;
