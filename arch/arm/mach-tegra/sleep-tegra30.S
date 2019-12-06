@@ -340,33 +340,48 @@ ENTRY(tegra30_lp1_reset)
 	add	r1, r1, #2
 	wait_until r1, r7, r3
 
-	/* enable PLLM via PMC */
+	/* restore PLLM state */
 	mov32	r2, TEGRA_PMC_BASE
+	adr	r7, tegra_pllm_status
+	ldr	r1, [r7]
+	cmp	r2, #(1 << 12)
+	bne	_skip_pllm
+
 	ldr	r1, [r2, #PMC_PLLP_WB0_OVERRIDE]
 	orr	r1, r1, #(1 << 12)
 	str	r1, [r2, #PMC_PLLP_WB0_OVERRIDE]
 
 	pll_enable r1, r0, CLK_RESET_PLLM_BASE, 0
+	pll_locked r1, r0, CLK_RESET_PLLM_BASE
+
+_skip_pllm:
 	pll_enable r1, r0, CLK_RESET_PLLC_BASE, 0
 	pll_enable r1, r0, CLK_RESET_PLLX_BASE, 0
 
 	b	_pll_m_c_x_done
 
 _no_pll_iddq_exit:
-	/* enable PLLM via PMC */
+	/* restore PLLM state */
 	mov32	r2, TEGRA_PMC_BASE
+	adr	r7, tegra_pllm_status
+	ldr	r1, [r7]
+	cmp	r2, #(1 << 12)
+	bne	_skip_pllm_no_iddq
+
 	ldr	r1, [r2, #PMC_PLLP_WB0_OVERRIDE]
 	orr	r1, r1, #(1 << 12)
 	str	r1, [r2, #PMC_PLLP_WB0_OVERRIDE]
 
 	pll_enable r1, r0, CLK_RESET_PLLM_BASE, CLK_RESET_PLLM_MISC
+	pll_locked r1, r0, CLK_RESET_PLLM_BASE
+
+_skip_pllm_no_iddq:
 	pll_enable r1, r0, CLK_RESET_PLLC_BASE, CLK_RESET_PLLC_MISC
 
 _pll_m_c_x_done:
 	pll_enable r1, r0, CLK_RESET_PLLP_BASE, CLK_RESET_PLLP_MISC
 	pll_enable r1, r0, CLK_RESET_PLLA_BASE, CLK_RESET_PLLA_MISC
 
-	pll_locked r1, r0, CLK_RESET_PLLM_BASE
 	pll_locked r1, r0, CLK_RESET_PLLP_BASE
 	pll_locked r1, r0, CLK_RESET_PLLA_BASE
 	pll_locked r1, r0, CLK_RESET_PLLC_BASE
@@ -543,6 +558,8 @@ __no_dual_emc_chanl:
 ENDPROC(tegra30_lp1_reset)
 
 	.align	L1_CACHE_SHIFT
+tegra_pllm_status:
+	.word	0
 tegra30_sdram_pad_address:
 	.word	TEGRA_EMC_BASE + EMC_CFG				@0x0
 	.word	TEGRA_EMC_BASE + EMC_ZCAL_INTERVAL			@0x4
@@ -641,10 +658,14 @@ tegra30_switch_cpu_to_clk32k:
 	add	r1, r1, #2
 	wait_until r1, r7, r9
 
-	/* disable PLLM via PMC in LP1 */
+	/* disable PLLM, if enabled, via PMC in LP1 */
+	adr	r1, tegra_pllm_status
 	ldr	r0, [r4, #PMC_PLLP_WB0_OVERRIDE]
-	bic	r0, r0, #(1 << 12)
-	str	r0, [r4, #PMC_PLLP_WB0_OVERRIDE]
+	and	r2, r0, #(1 << 12)
+	str     r2, [r1]
+	cmp	r2, #(1 << 12)
+	biceq	r0, r0, #(1 << 12)
+	streq	r0, [r4, #PMC_PLLP_WB0_OVERRIDE]
 
 	/* disable PLLP, PLLA, PLLC and PLLX */
 	tegra_get_soc_id TEGRA_APB_MISC_BASE, r1
