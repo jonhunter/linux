@@ -248,10 +248,10 @@ config PCI_MESON
 	  implement the driver.
 
 config PCIE_TEGRA194
-	tristate
+	bool
 
 config PCIE_TEGRA194_HOST
-	tristate "NVIDIA Tegra194 (and later) PCIe controller - Host Mode"
+	bool "NVIDIA Tegra194 (and later) PCIe controller - Host Mode"
 	depends on ARCH_TEGRA_194_SOC || COMPILE_TEST
 	depends on PCI_MSI_IRQ_DOMAIN
 	select PCIE_DW_HOST
@@ -263,10 +263,11 @@ config PCIE_TEGRA194_HOST
 	  Tegra194. This controller can work either as EP or RC. In order to
 	  enable host-specific features PCIE_TEGRA194_HOST must be selected and
 	  in order to enable device-specific features PCIE_TEGRA194_EP must be
-	  selected. This uses the DesignWare core.
+	  selected. This uses the DesignWare core. ACPI platforms with Tegra194
+	  don't need to enable this.
 
 config PCIE_TEGRA194_EP
-	tristate "NVIDIA Tegra194 (and later) PCIe controller - Endpoint Mode"
+	bool "NVIDIA Tegra194 (and later) PCIe controller - Endpoint Mode"
 	depends on ARCH_TEGRA_194_SOC || COMPILE_TEST
 	depends on PCI_ENDPOINT
 	select PCIE_DW_EP
