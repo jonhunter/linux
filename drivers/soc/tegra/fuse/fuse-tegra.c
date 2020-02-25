@@ -300,6 +300,67 @@ static void tegra_enable_fuse_clk(void __iomem *base)
 	writel(reg, base + 0x14);
 }
 
+static ssize_t tegra_soc_hidrev_show(struct device *dev,
+				     struct device_attribute *attr,
+				     char *buf)
+{
+	return sprintf(buf, "%d\n", tegra_read_chipid());
+}
+
+static DEVICE_ATTR(hidrev, S_IRUGO, tegra_soc_hidrev_show,  NULL);
+
+static ssize_t tegra_soc_majorrev_show(struct device *dev,
+				       struct device_attribute *attr,
+				       char *buf)
+{
+	return sprintf(buf, "%d\n", tegra_get_major_rev());
+}
+
+static DEVICE_ATTR(majorrev, S_IRUGO, tegra_soc_majorrev_show,  NULL);
+
+static ssize_t tegra_soc_minorrev_show(struct device *dev,
+				       struct device_attribute *attr,
+				       char *buf)
+{
+	return sprintf(buf, "%d\n", tegra_get_minor_rev());
+}
+
+static DEVICE_ATTR(minorrev, S_IRUGO, tegra_soc_minorrev_show,  NULL);
+
+static struct attribute *tegra_soc_attr[] = {
+	&dev_attr_hidrev.attr,
+	&dev_attr_majorrev.attr,
+	&dev_attr_minorrev.attr,
+	NULL,
+};
+
+const struct attribute_group tegra_soc_attr_group = {
+	.attrs = tegra_soc_attr,
+};
+
+#ifdef CONFIG_ARCH_TEGRA_194_SOC
+static ssize_t tegra_soc_pre_si_plat_show(struct device *dev,
+					  struct device_attribute *attr,
+					  char *buf)
+{
+	return sprintf(buf, "%d\n", (tegra_read_chipid() >> 20) & 0xf);
+}
+
+static DEVICE_ATTR(pre_si_platform, S_IRUGO, tegra_soc_pre_si_plat_show,  NULL);
+
+static struct attribute *tegra194_soc_attr[] = {
+	&dev_attr_hidrev.attr,
+	&dev_attr_majorrev.attr,
+	&dev_attr_minorrev.attr,
+	&dev_attr_pre_si_platform.attr,
+	NULL,
+};
+
+const struct attribute_group tegra194_soc_attr_group = {
+	.attrs = tegra194_soc_attr,
+};
+#endif
+
 struct device * __init tegra_soc_device_register(void)
 {
 	struct soc_device_attribute *attr;
@@ -312,6 +373,7 @@ struct device * __init tegra_soc_device_register(void)
 	attr->family = kasprintf(GFP_KERNEL, "Tegra");
 	attr->revision = kasprintf(GFP_KERNEL, "%d", tegra_sku_info.revision);
 	attr->soc_id = kasprintf(GFP_KERNEL, "%u", tegra_get_chip_id());
+	attr->custom_attr_group = fuse->soc->soc_attr_group;
 
 	dev = soc_device_register(attr);
 	if (IS_ERR(dev)) {
