@@ -37,6 +37,16 @@ u8 tegra_get_chip_id(void)
 	return (tegra_read_chipid() >> 8) & 0xff;
 }
 
+u8 tegra_get_major_rev(void)
+{
+	return (tegra_read_chipid() >> 4) & 0xf;
+}
+
+u8 tegra_get_minor_rev(void)
+{
+	return (tegra_read_chipid() >> 16) & 0xf;
+}
+
 u32 tegra_read_straps(void)
 {
 	WARN(!chipid, "Tegra ABP MISC not yet available\n");
@@ -65,11 +75,10 @@ static const struct of_device_id apbmisc_match[] __initconst = {
 
 void __init tegra_init_revision(void)
 {
-	u32 id, chip_id, minor_rev;
+	u8 chip_id, minor_rev;
 
-	id = tegra_read_chipid();
-	chip_id = (id >> 8) & 0xff;
-	minor_rev = (id >> 16) & 0xf;
+	chip_id = tegra_get_chip_id();
+	minor_rev = tegra_get_minor_rev();
 
 	switch (minor_rev) {
 	case 1:
@@ -90,6 +99,35 @@ void __init tegra_init_revision(void)
 		break;
 	default:
 		tegra_sku_info.revision = TEGRA_REVISION_UNKNOWN;
+	}
+
+	tegra_sku_info.sku_id = tegra_fuse_read_early(FUSE_SKU_INFO);
+}
+
+void __init tegra194_init_revision(void)
+{
+	u8 major_rev, minor_rev;
+
+	major_rev = tegra_get_major_rev();
+	minor_rev = tegra_get_minor_rev();
+
+	switch (major_rev) {
+	case 1:
+		switch (minor_rev) {
+		case 1:
+			tegra_sku_info.revision = TEGRA_REVISION_A01;
+			break;
+		case 2:
+			tegra_sku_info.revision = TEGRA_REVISION_A02;
+			break;
+		default:
+			tegra_sku_info.revision = TEGRA_REVISION_UNKNOWN;
+			break;
+		}
+		break;
+	default:
+		tegra_sku_info.revision = TEGRA_REVISION_UNKNOWN;
+		break;
 	}
 
 	tegra_sku_info.sku_id = tegra_fuse_read_early(FUSE_SKU_INFO);

@@ -154,13 +154,14 @@ static void __init tegra20_fuse_init(struct tegra_fuse *fuse)
 {
 	fuse->read_early = tegra20_fuse_read_early;
 
-	tegra_init_revision();
+	fuse->soc->revision_init();
 	fuse->soc->speedo_init(&tegra_sku_info);
 	tegra20_fuse_add_randomness();
 }
 
 const struct tegra_fuse_soc tegra20_fuse_soc = {
 	.init = tegra20_fuse_init,
+	.revision_init = tegra_init_revision,
 	.speedo_init = tegra20_init_speedo_data,
 	.probe = tegra20_fuse_probe,
 	.info = &tegra20_fuse_info,

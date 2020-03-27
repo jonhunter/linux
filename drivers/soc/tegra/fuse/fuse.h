@@ -26,6 +26,7 @@ struct tegra_fuse_info {
 struct tegra_fuse_soc {
 	void (*init)(struct tegra_fuse *fuse);
 	void (*speedo_init)(struct tegra_sku_info *info);
+	void (*revision_init)(void);
 	int (*probe)(struct tegra_fuse *fuse);
 
 	const struct tegra_fuse_info *info;
@@ -59,10 +60,14 @@ struct tegra_fuse {
 };
 
 void tegra_init_revision(void);
+void tegra194_init_revision(void);
 void tegra_init_apbmisc(void);
 
 bool __init tegra_fuse_read_spare(unsigned int spare);
 u32 __init tegra_fuse_read_early(unsigned int offset);
+
+u8 tegra_get_major_rev(void);
+u8 tegra_get_minor_rev(void);
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 void tegra20_init_speedo_data(struct tegra_sku_info *sku_info);

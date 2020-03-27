@@ -91,7 +91,7 @@ static void __init tegra30_fuse_init(struct tegra_fuse *fuse)
 	fuse->read_early = tegra30_fuse_read_early;
 	fuse->read = tegra30_fuse_read;
 
-	tegra_init_revision();
+	fuse->soc->revision_init();
 
 	if (fuse->soc->speedo_init)
 		fuse->soc->speedo_init(&tegra_sku_info);
@@ -110,6 +110,7 @@ static const struct tegra_fuse_info tegra30_fuse_info = {
 const struct tegra_fuse_soc tegra30_fuse_soc = {
 	.init = tegra30_fuse_init,
 	.speedo_init = tegra30_init_speedo_data,
+	.revision_init = tegra_init_revision,
 	.info = &tegra30_fuse_info,
 };
 #endif
@@ -124,6 +125,7 @@ static const struct tegra_fuse_info tegra114_fuse_info = {
 const struct tegra_fuse_soc tegra114_fuse_soc = {
 	.init = tegra30_fuse_init,
 	.speedo_init = tegra114_init_speedo_data,
+	.revision_init = tegra_init_revision,
 	.info = &tegra114_fuse_info,
 };
 #endif
@@ -202,6 +204,7 @@ static const struct tegra_fuse_info tegra124_fuse_info = {
 const struct tegra_fuse_soc tegra124_fuse_soc = {
 	.init = tegra30_fuse_init,
 	.speedo_init = tegra124_init_speedo_data,
+	.revision_init = tegra_init_revision,
 	.info = &tegra124_fuse_info,
 	.lookups = tegra124_fuse_lookups,
 	.num_lookups = ARRAY_SIZE(tegra124_fuse_lookups),
@@ -287,6 +290,7 @@ static const struct tegra_fuse_info tegra210_fuse_info = {
 const struct tegra_fuse_soc tegra210_fuse_soc = {
 	.init = tegra30_fuse_init,
 	.speedo_init = tegra210_init_speedo_data,
+	.revision_init = tegra_init_revision,
 	.info = &tegra210_fuse_info,
 	.lookups = tegra210_fuse_lookups,
 	.num_lookups = ARRAY_SIZE(tegra210_fuse_lookups),
@@ -316,6 +320,7 @@ static const struct tegra_fuse_info tegra186_fuse_info = {
 
 const struct tegra_fuse_soc tegra186_fuse_soc = {
 	.init = tegra30_fuse_init,
+	.revision_init = tegra_init_revision,
 	.info = &tegra186_fuse_info,
 	.lookups = tegra186_fuse_lookups,
 	.num_lookups = ARRAY_SIZE(tegra186_fuse_lookups),
@@ -345,6 +350,7 @@ static const struct tegra_fuse_info tegra194_fuse_info = {
 
 const struct tegra_fuse_soc tegra194_fuse_soc = {
 	.init = tegra30_fuse_init,
+	.revision_init = tegra194_init_revision,
 	.info = &tegra194_fuse_info,
 	.lookups = tegra194_fuse_lookups,
 	.num_lookups = ARRAY_SIZE(tegra194_fuse_lookups),
