@@ -44,7 +44,6 @@ struct tegra194_cpufreq_data {
 
 struct tegra_cpu_ctr {
 	u32 cpu;
-	u32 delay;
 	u32 coreclk_cnt, last_coreclk_cnt;
 	u32 refclk_cnt, last_refclk_cnt;
 };
@@ -112,7 +111,7 @@ static void tegra_read_counters(struct work_struct *work)
 	val = read_freq_feedback();
 	c->last_refclk_cnt = lower_32_bits(val);
 	c->last_coreclk_cnt = upper_32_bits(val);
-	udelay(c->delay);
+	udelay(US_DELAY);
 	val = read_freq_feedback();
 	c->refclk_cnt = lower_32_bits(val);
 	c->coreclk_cnt = upper_32_bits(val);
@@ -139,7 +138,7 @@ static void tegra_read_counters(struct work_struct *work)
  * @cpu - logical cpu whose freq to be updated
  * Returns freq in KHz on success, 0 if cpu is offline
  */
-static unsigned int tegra194_get_speed_common(u32 cpu, u32 delay)
+static unsigned int tegra194_calculate_speed(u32 cpu)
 {
 	struct read_counters_work read_counters_work;
 	struct tegra_cpu_ctr c;
@@ -153,7 +152,6 @@ static unsigned int tegra194_get_speed_common(u32 cpu, u32 delay)
 	 * interrupts enabled.
 	 */
 	read_counters_work.c.cpu = cpu;
-	read_counters_work.c.delay = delay;
 	INIT_WORK_ONSTACK(&read_counters_work.work, tegra_read_counters);
 	queue_work_on(cpu, read_counters_wq, &read_counters_work.work);
 	flush_work(&read_counters_work.work);
@@ -209,7 +207,7 @@ static unsigned int tegra194_get_speed(u32 cpu)
 	table = policy.freq_table;
 
 	/* reconstruct actual cpu freq using counters*/
-	rate = tegra194_get_speed_common(cpu, US_DELAY);
+	rate = tegra194_calculate_speed(cpu);
 
 	/* get last written ndiv value*/
 	err = smp_call_function_single(cpu, get_cpu_ndiv, &ndiv, true);
@@ -356,10 +354,9 @@ static int tegra194_cpufreq_init(struct cpufreq_policy *policy)
 	 * So, wait till it reaches the previous value and timeout if the
 	 * time taken to reach requested freq is >100ms
 	 */
-	ret = read_poll_timeout(tegra194_get_speed_common, policy->cur,
+	ret = read_poll_timeout(tegra194_calculate_speed, policy->cur,
 				abs(policy->cur - new_freq) <= 115200, 0,
-				100 * USEC_PER_MSEC, false, policy->cpu,
-				US_DELAY);
+				100 * USEC_PER_MSEC, false, policy->cpu);
 	if (ret)
 		pr_warn("cpufreq: time taken to restore freq >100ms\n");
 
