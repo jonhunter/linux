@@ -347,6 +347,77 @@ static void tegra_pinctrl_gpio_disable_free(struct pinctrl_dev *pctldev,
 	pmx_writel(pmx, value, group->mux_bank, group->mux_reg);
 }
 
+static int tegra_pinctrl_gpio_set_input(struct tegra_pmx *pmx,
+					const struct tegra_pingroup *group,
+					bool enable)
+{
+	u32 value;
+
+	/* Not all Tegra devices have an input enable */
+	if (group->einput_bit < 0)
+		return 0;
+
+	if (group->mux_bank < 0 || group->mux_reg < 0)
+		return -EINVAL;
+
+	value = pmx_readl(pmx, group->mux_bank, group->mux_reg);
+
+	if (enable)
+		value |= BIT(group->einput_bit);
+	else
+		value &= ~BIT(group->einput_bit);
+
+	pmx_writel(pmx, value, group->mux_bank, group->mux_reg);
+
+	return 0;
+}
+
+static int tegra_pinctrl_gpio_set_output(struct tegra_pmx *pmx,
+					 const struct tegra_pingroup *group,
+					 bool enable)
+{
+	u32 value;
+
+	if (group->tri_bank < 0 || group->tri_reg < 0 || group->tri_bit < 0)
+		return -EINVAL;
+
+	value = pmx_readl(pmx, group->tri_bank, group->tri_reg);
+
+	if (enable)
+		value &= ~BIT(group->tri_bit);
+	else
+		value |= BIT(group->tri_bit);
+
+	pmx_writel(pmx, value, group->tri_bank, group->tri_reg);
+
+	return 0;
+}
+
+static int tegra_pinctrl_gpio_set_direction(struct pinctrl_dev *pctldev,
+					    struct pinctrl_gpio_range *range,
+					    unsigned offset, bool input)
+{
+	struct tegra_pmx *pmx = pinctrl_dev_get_drvdata(pctldev);
+	const struct tegra_pingroup *group;
+	int ret;
+
+	group = tegra_pinctrl_get_group(pctldev, offset);
+	if (!group)
+		return -EINVAL;
+
+	if (group->npins != 1) {
+		dev_dbg(pctldev->dev,
+			"unable to configure direction for pingroup\n");
+		return 0;
+	}
+
+	ret = tegra_pinctrl_gpio_set_input(pmx, group, input);
+	if (ret < 0)
+		return ret;
+
+	return tegra_pinctrl_gpio_set_output(pmx, group, !input);
+}
+
 static const struct pinmux_ops tegra_pinmux_ops = {
 	.get_functions_count = tegra_pinctrl_get_funcs_count,
 	.get_function_name = tegra_pinctrl_get_func_name,
@@ -354,6 +425,7 @@ static const struct pinmux_ops tegra_pinmux_ops = {
 	.set_mux = tegra_pinctrl_set_mux,
 	.gpio_request_enable = tegra_pinctrl_gpio_request_enable,
 	.gpio_disable_free = tegra_pinctrl_gpio_disable_free,
+	.gpio_set_direction = tegra_pinctrl_gpio_set_direction,
 };
 
 static int tegra_pinconf_reg(struct tegra_pmx *pmx,
