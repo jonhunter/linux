@@ -7,6 +7,7 @@
 #include <linux/cpufreq.h>
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
+#include <linux/iopoll.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_platform.h>
@@ -21,7 +22,6 @@
 #define KHZ                     1000
 #define REF_CLK_MHZ             408 /* 408 MHz */
 #define US_DELAY                500
-#define US_DELAY_MIN            2
 #define CPUFREQ_TBL_STEP_HZ     (50 * KHZ * KHZ)
 #define MAX_CNT                 ~0U
 
@@ -241,26 +241,130 @@ static unsigned int tegra194_get_speed(u32 cpu)
 	return rate;
 }
 
+static int
+freqtable_find_index_closest_ndiv(struct cpufreq_frequency_table *table,
+				  unsigned int target_ndiv)
+{
+	struct cpufreq_frequency_table *pos;
+	unsigned int ndiv;
+	int idx, best = -1;
+
+	cpufreq_for_each_valid_entry_idx(pos, table, idx) {
+		ndiv = pos->driver_data;
+
+		if (ndiv == target_ndiv)
+			return idx;
+
+		if (ndiv < target_ndiv) {
+			best = idx;
+			continue;
+		}
+
+		/* No ndiv found below target_ndiv */
+		if (best == -1)
+			return idx;
+
+		/* Choose the closest ndiv */
+		if (target_ndiv - table[best].driver_data > ndiv - target_ndiv)
+			return idx;
+
+		return best;
+	}
+
+	return best;
+}
+
+static int
+freqtable_set_closest_ndiv(struct cpufreq_frequency_table *freq_table,
+			   int cpu)
+{
+	u64 ndiv;
+	int idx, ret;
+
+	if (!cpu_online(cpu))
+		return -EINVAL;
+
+	/* get ndiv for the last frequency request from software  */
+	ret = smp_call_function_single(cpu, get_cpu_ndiv, &ndiv, true);
+	if (ret) {
+		pr_err("cpufreq: Failed to get ndiv for CPU%d\n", cpu);
+		return ret;
+	}
+
+	/* while creating freq_table during boot, if the ndiv value got
+	 * filtered out due to large freq steps, then find closest ndiv
+	 * from freq_table and set that.
+	 */
+	idx = freqtable_find_index_closest_ndiv(freq_table, ndiv);
+
+	if (ndiv != freq_table[idx].driver_data) {
+		pr_debug("cpufreq: new freq:%d ndiv:%d, old ndiv:%llu\n",
+			 freq_table[idx].frequency,
+			 freq_table[idx].driver_data, ndiv);
+
+		ret = smp_call_function_single(cpu, set_cpu_ndiv,
+					       freq_table + idx, true);
+		if (ret) {
+			pr_err("cpufreq: setting ndiv for CPU%d failed\n",
+			       cpu);
+			return ret;
+		}
+	}
+
+	return freq_table[idx].frequency;
+}
+
 static int tegra194_cpufreq_init(struct cpufreq_policy *policy)
 {
 	struct tegra194_cpufreq_data *data = cpufreq_get_driver_data();
-	u32 cpu;
+	u32 cpu = policy->cpu;
+	int new_freq, ret;
 	u32 cl;
 
-	smp_call_function_single(policy->cpu, get_cpu_cluster, &cl, true);
+	if (!cpu_online(cpu))
+		return -EINVAL;
+
+	ret = smp_call_function_single(cpu, get_cpu_cluster, &cl, true);
+	if (ret) {
+		pr_err("cpufreq: Failed to get cluster for CPU%d\n", cpu);
+		return ret;
+	}
 
 	if (cl >= data->num_clusters)
 		return -EINVAL;
-
-	/* boot freq */
-	policy->cur = tegra194_get_speed_common(policy->cpu, US_DELAY_MIN);
 
 	/* set same policy for all cpus in a cluster */
 	for (cpu = (cl * 2); cpu < ((cl + 1) * 2); cpu++)
 		cpumask_set_cpu(cpu, policy->cpus);
 
 	policy->freq_table = data->tables[cl];
-	policy->cpuinfo.transition_latency = TEGRA_CPUFREQ_TRANSITION_LATENCY;
+	policy->cpuinfo.transition_latency =
+		TEGRA_CPUFREQ_TRANSITION_LATENCY;
+
+	/* Find and set the closest ndiv from freq_table if the boot freq
+	 * already set is filtered out from freq_table or not present.
+	 */
+	new_freq = freqtable_set_closest_ndiv(policy->freq_table, policy->cpu);
+	if (new_freq < 0) {
+		pr_err("cpufreq: set closest ndiv for CPU%d failed(%d)\n",
+		       policy->cpu, new_freq);
+		return new_freq;
+	}
+
+	/* It takes some time to restore the previous frequency while
+	 * turning-on non-boot cores during exit from SC7(Suspend-to-RAM).
+	 * So, wait till it reaches the previous value and timeout if the
+	 * time taken to reach requested freq is >100ms
+	 */
+	ret = read_poll_timeout(tegra194_get_speed_common, policy->cur,
+				abs(policy->cur - new_freq) <= 115200, 0,
+				100 * USEC_PER_MSEC, false, policy->cpu,
+				US_DELAY);
+	if (ret)
+		pr_warn("cpufreq: time taken to restore freq >100ms\n");
+
+	pr_debug("cpufreq: cpu%d, curfreq:%d, setfreq:%d\n", policy->cpu,
+		 policy->cur, new_freq);
 
 	return 0;
 }
