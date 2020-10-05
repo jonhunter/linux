@@ -1954,6 +1954,30 @@ static int tegra_pmc_irq_translate(struct irq_domain *domain,
 	return 0;
 }
 
+/* Trim the irq hierarchy from a particular irq domain */
+static void trim_hierarchy(unsigned int virq, struct irq_domain *domain)
+{
+	struct irq_data *tail, *irq_data = irq_get_irq_data(virq);
+
+	/* The PMC doesn't generate any interrupt by itself */
+	if (WARN_ON(!irq_data->parent_data))
+		return;
+
+	/* Skip until we find the right domain */
+	while (irq_data->parent_data && irq_data->parent_data->domain != domain)
+		irq_data = irq_data->parent_data;
+
+	/* Sever the inner part of the hierarchy...  */
+	tail = irq_data->parent_data;
+	irq_data->parent_data = NULL;
+
+	/* ... and free it */
+	for (irq_data = tail; irq_data; irq_data = tail) {
+		tail = irq_data->parent_data;
+		kfree(irq_data);
+	};
+}
+
 static int tegra_pmc_irq_alloc(struct irq_domain *domain, unsigned int virq,
 			       unsigned int num_irqs, void *data)
 {
@@ -2000,46 +2024,15 @@ static int tegra_pmc_irq_alloc(struct irq_domain *domain, unsigned int virq,
 
 			err = irq_domain_set_hwirq_and_chip(domain, virq,
 							    event->id,
-							    &pmc->irq, pmc);
-
-			/*
-			 * GPIOs don't have an equivalent interrupt in the
-			 * parent controller (GIC). However some code, such
-			 * as the one in irq_get_irqchip_state(), require a
-			 * valid IRQ chip to be set. Make sure that's the
-			 * case by passing NULL here, which will install a
-			 * dummy IRQ chip for the interrupt in the parent
-			 * domain.
-			 */
-			if (domain->parent)
-				irq_domain_set_hwirq_and_chip(domain->parent,
-							      virq, 0, NULL,
-							      NULL);
-
+							    &pmc_irqchip, pmc);
+			if (!err)
+				trim_hierarchy(virq, domain->parent);
 			break;
 		}
 	}
 
-	/*
-	 * For interrupts that don't have associated wake events, assign a
-	 * dummy hardware IRQ number. This is used in the ->irq_set_type()
-	 * and ->irq_set_wake() callbacks to return early for these IRQs.
-	 */
-	if (i == soc->num_wake_events) {
-		err = irq_domain_set_hwirq_and_chip(domain, virq, ULONG_MAX,
-						    &pmc_irqchip, pmc);
-
-		/*
-		 * Interrupts without a wake event don't have a corresponding
-		 * interrupt in the parent controller (GIC). Pass NULL for the
-		 * chip here, which causes a dummy IRQ chip to be installed
-		 * for the interrupt in the parent domain, to make this
-		 * explicit.
-		 */
-		if (domain->parent)
-			irq_domain_set_hwirq_and_chip(domain->parent, virq, 0,
-						      NULL, NULL);
-	}
+	if (i == soc->num_wake_events)
+		trim_hierarchy(virq, domain);
 
 	return err;
 }
@@ -2054,9 +2047,6 @@ static int tegra210_pmc_irq_set_wake(struct irq_data *data, unsigned int on)
 	struct tegra_pmc *pmc = irq_data_get_irq_chip_data(data);
 	unsigned int offset, bit;
 	u32 value;
-
-	if (data->hwirq == ULONG_MAX)
-		return 0;
 
 	offset = data->hwirq / 32;
 	bit = data->hwirq % 32;
@@ -2091,9 +2081,6 @@ static int tegra210_pmc_irq_set_type(struct irq_data *data, unsigned int type)
 	struct tegra_pmc *pmc = irq_data_get_irq_chip_data(data);
 	unsigned int offset, bit;
 	u32 value;
-
-	if (data->hwirq == ULONG_MAX)
-		return 0;
 
 	offset = data->hwirq / 32;
 	bit = data->hwirq % 32;
@@ -2135,10 +2122,6 @@ static int tegra186_pmc_irq_set_wake(struct irq_data *data, unsigned int on)
 	unsigned int offset, bit;
 	u32 value;
 
-	/* nothing to do if there's no associated wake event */
-	if (WARN_ON(data->hwirq == ULONG_MAX))
-		return 0;
-
 	offset = data->hwirq / 32;
 	bit = data->hwirq % 32;
 
@@ -2165,10 +2148,6 @@ static int tegra186_pmc_irq_set_type(struct irq_data *data, unsigned int type)
 {
 	struct tegra_pmc *pmc = irq_data_get_irq_chip_data(data);
 	u32 value;
-
-	/* nothing to do if there's no associated wake event */
-	if (data->hwirq == ULONG_MAX)
-		return 0;
 
 	value = readl(pmc->wake + WAKE_AOWAKE_CNTRL(data->hwirq));
 
