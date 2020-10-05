@@ -400,7 +400,6 @@ struct tegra_pmc {
 	struct pinctrl_dev *pctl_dev;
 
 	struct irq_domain *domain;
-	struct irq_chip irq;
 
 	struct notifier_block clk_nb;
 };
@@ -1889,6 +1888,58 @@ static void tegra_pmc_reset_sysfs_init(struct tegra_pmc *pmc)
 	}
 }
 
+static void tegra_irq_mask_parent(struct irq_data *data)
+{
+	if (data->parent_data)
+		irq_chip_mask_parent(data);
+}
+
+static void tegra_irq_unmask_parent(struct irq_data *data)
+{
+	if (data->parent_data)
+		irq_chip_unmask_parent(data);
+}
+
+static void tegra_irq_eoi_parent(struct irq_data *data)
+{
+	if (data->parent_data)
+		irq_chip_eoi_parent(data);
+}
+
+static int tegra_irq_set_affinity_parent(struct irq_data *data,
+					 const struct cpumask *dest,
+					 bool force)
+{
+	if (data->parent_data)
+		return irq_chip_set_affinity_parent(data, dest, force);
+
+	return -EINVAL;
+}
+
+static int tegra_irq_set_type(struct irq_data *data, unsigned int type)
+{
+	struct tegra_pmc *pmc = irq_data_get_irq_chip_data(data);
+
+	return pmc->soc->irq_set_type(data, type);
+}
+
+static int tegra_irq_set_wake(struct irq_data *data, unsigned int on)
+{
+	struct tegra_pmc *pmc = irq_data_get_irq_chip_data(data);
+
+	return pmc->soc->irq_set_wake(data, on);
+}
+
+static struct irq_chip pmc_irqchip = {
+	.name			= "tegra-pmc",
+	.irq_mask		= tegra_irq_mask_parent,
+	.irq_unmask		= tegra_irq_unmask_parent,
+	.irq_eoi		= tegra_irq_eoi_parent,
+	.irq_set_affinity	= tegra_irq_set_affinity_parent,
+	.irq_set_type		= tegra_irq_set_type,
+	.irq_set_wake		= tegra_irq_set_wake,
+};
+
 static int tegra_pmc_irq_translate(struct irq_domain *domain,
 				   struct irq_fwspec *fwspec,
 				   unsigned long *hwirq,
@@ -1926,7 +1977,7 @@ static int tegra_pmc_irq_alloc(struct irq_domain *domain, unsigned int virq,
 
 			err = irq_domain_set_hwirq_and_chip(domain, virq,
 							    event->id,
-							    &pmc->irq, pmc);
+							    &pmc_irqchip, pmc);
 			if (err < 0)
 				break;
 
@@ -1976,7 +2027,7 @@ static int tegra_pmc_irq_alloc(struct irq_domain *domain, unsigned int virq,
 	 */
 	if (i == soc->num_wake_events) {
 		err = irq_domain_set_hwirq_and_chip(domain, virq, ULONG_MAX,
-						    &pmc->irq, pmc);
+						    &pmc_irqchip, pmc);
 
 		/*
 		 * Interrupts without a wake event don't have a corresponding
@@ -2158,14 +2209,6 @@ static int tegra_pmc_irq_init(struct tegra_pmc *pmc)
 
 	if (!parent)
 		return 0;
-
-	pmc->irq.name = dev_name(pmc->dev);
-	pmc->irq.irq_mask = irq_chip_mask_parent;
-	pmc->irq.irq_unmask = irq_chip_unmask_parent;
-	pmc->irq.irq_eoi = irq_chip_eoi_parent;
-	pmc->irq.irq_set_affinity = irq_chip_set_affinity_parent;
-	pmc->irq.irq_set_type = pmc->soc->irq_set_type;
-	pmc->irq.irq_set_wake = pmc->soc->irq_set_wake;
 
 	pmc->domain = irq_domain_add_hierarchy(parent, 0, 96, pmc->dev->of_node,
 					       &tegra_pmc_irq_domain_ops, pmc);
