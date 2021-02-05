@@ -584,10 +584,15 @@ static int tegra_gpio_irq_request_resources(struct irq_data *d)
 {
 	struct gpio_chip *chip = irq_data_get_irq_chip_data(d);
 	struct tegra_gpio_info *tgi = gpiochip_get_data(chip);
+	int ret;
 
 	tegra_gpio_enable(tgi, d->hwirq);
 
-	return gpiochip_reqres_irq(chip, d->hwirq);
+	ret = gpiochip_reqres_irq(chip, d->hwirq);
+	if (ret < 0)
+		tegra_gpio_disable(tgi, d->hwirq);
+
+	return ret;
 }
 
 static void tegra_gpio_irq_release_resources(struct irq_data *d)
