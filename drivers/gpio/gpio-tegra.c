@@ -345,8 +345,6 @@ static int tegra_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 
 	raw_spin_unlock_irqrestore(&bank->lvl_lock[port], flags);
 
-	tegra_gpio_mask_write(tgi, GPIO_MSK_OE(tgi, gpio), gpio, 0);
-
 	ret = gpiochip_lock_as_irq(&tgi->gc, gpio);
 	if (ret) {
 		dev_err(tgi->dev,
@@ -586,7 +584,9 @@ static int tegra_gpio_irq_request_resources(struct irq_data *d)
 	struct tegra_gpio_info *tgi = gpiochip_get_data(chip);
 	int ret;
 
-	tegra_gpio_enable(tgi, d->hwirq);
+	ret = tegra_gpio_direction_input(chip, d->hwirq);
+	if (ret < 0)
+		return ret;
 
 	ret = gpiochip_reqres_irq(chip, d->hwirq);
 	if (ret < 0)
