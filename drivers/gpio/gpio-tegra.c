@@ -346,13 +346,11 @@ static int tegra_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 	raw_spin_unlock_irqrestore(&bank->lvl_lock[port], flags);
 
 	tegra_gpio_mask_write(tgi, GPIO_MSK_OE(tgi, gpio), gpio, 0);
-	tegra_gpio_enable(tgi, gpio);
 
 	ret = gpiochip_lock_as_irq(&tgi->gc, gpio);
 	if (ret) {
 		dev_err(tgi->dev,
 			"unable to lock Tegra GPIO %u as IRQ\n", gpio);
-		tegra_gpio_disable(tgi, gpio);
 		return ret;
 	}
 
