@@ -824,7 +824,7 @@
 		};
 	};
 
-	fan: fan {
+	fan: pwm-fan {
 		compatible = "pwm-fan";
 		pwms = <&pwm 3 45334>;
 
