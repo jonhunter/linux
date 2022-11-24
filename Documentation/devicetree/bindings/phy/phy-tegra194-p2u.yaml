@@ -40,6 +40,26 @@ properties:
   '#phy-cells':
     const: 0
 
+  interrupts:
+    items:
+      description: P2U interrupt for Gen4 lane margining functionality.
+
+  nvidia,bpmp:
+    $ref: /schemas/types.yaml#/definitions/phandle-array
+    description: |
+      Must contain a pair of phandles to BPMP controller node followed by
+      controller P2U ID.
+    items:
+      - items:
+          - description: phandle to BPMP controller node
+          - description: P2U instance ID
+            maximum: 24
+
+required:
+  - reg
+  - reg-names
+  - '#phy-cells'
+
 additionalProperties: false
 
 examples:
@@ -48,6 +68,8 @@ examples:
         compatible = "nvidia,tegra194-p2u";
         reg = <0x03e10000 0x10000>;
         reg-names = "ctl";
+        interrupts = <GIC_SPI 337 IRQ_TYPE_LEVEL_HIGH>;
+        nvidia,bpmp = <&bpmp 1>;
 
         #phy-cells = <0>;
     };
