@@ -146,10 +146,15 @@
 #define SSPX_CORE_CNT0 0x10
 #define  SSPX_CORE_CNT0_PING_TBURST_MASK GENMASK(7, 0)
 #define  SSPX_CORE_CNT0_PING_TBURST(x) ((x) & SSPX_CORE_CNT0_PING_TBURST_MASK)
+#define SSPX_CORE_CNT13 0x44
+#define  SSPX_CORE_CNT13_CRDTHP_TIMER_MASK GENMASK(11, 0)
+#define  SSPX_CORE_CNT13_CRDTHP_TIMER(x) ((x) & \
+				SSPX_CORE_CNT13_CRDTHP_TIMER_MASK)
+#define SSPX_CORE_CNT27 0x7c
+#define  SSPX_CORE_CNT27_PING_LFPS_TRPT_MASK GENMASK(29, 0)
+#define  SSPX_CORE_CNT27_PING_LFPS_TRPT(x) ((x) & \
+				SSPX_CORE_CNT27_PING_LFPS_TRPT_MASK)
 #define SSPX_CORE_CNT30 0x88
-#define  SSPX_CORE_CNT30_LMPITP_TIMER_MASK GENMASK(19, 0)
-#define  SSPX_CORE_CNT30_LMPITP_TIMER(x) ((x) & \
-					SSPX_CORE_CNT30_LMPITP_TIMER_MASK)
 #define SSPX_CORE_CNT32 0x90
 #define  SSPX_CORE_CNT32_POLL_TBURST_MAX_MASK GENMASK(7, 0)
 #define  SSPX_CORE_CNT32_POLL_TBURST_MAX(x) ((x) & \
@@ -549,9 +554,12 @@ struct tegra_xudc_soc {
 	unsigned int num_clks;
 	unsigned int num_phys;
 	unsigned int sspx_offset;
+	unsigned int crdthp_timer;
 	unsigned int lfps_ping;
+	unsigned int lfps_ping_trpt;
 	unsigned int lfps_poll;
 	unsigned int lmpitp_timer;
+	unsigned int lmpitp_timer_mask;
 	unsigned int u3_timeout;
 	bool u1_enable;
 	bool u2_enable;
@@ -3429,11 +3437,25 @@ static void tegra_xudc_device_params_init(struct tegra_xudc *xudc)
 		xudc_writel(xudc, val, offset + SSPX_CORE_CNT0);
 	}
 
+	if (xudc->soc->crdthp_timer) {
+		val = xudc_readl(xudc, offset + SSPX_CORE_CNT13);
+		val &= ~(SSPX_CORE_CNT13_CRDTHP_TIMER_MASK);
+		val |= SSPX_CORE_CNT13_CRDTHP_TIMER(xudc->soc->crdthp_timer);
+		xudc_writel(xudc, val, offset + SSPX_CORE_CNT13);
+	}
+
+	if (xudc->soc->lfps_ping_trpt) {
+		val = xudc_readl(xudc, offset + SSPX_CORE_CNT27);
+		val &= ~(SSPX_CORE_CNT27_PING_LFPS_TRPT_MASK);
+		val |= SSPX_CORE_CNT27_PING_LFPS_TRPT(xudc->soc->lfps_ping_trpt);
+		xudc_writel(xudc, val, offset + SSPX_CORE_CNT27);
+	}
+
 	if (xudc->soc->lmpitp_timer) {
 		/* Default tPortConfiguration timeout is too small. */
 		val = xudc_readl(xudc, offset + SSPX_CORE_CNT30);
-		val &= ~(SSPX_CORE_CNT30_LMPITP_TIMER_MASK);
-		val |= SSPX_CORE_CNT30_LMPITP_TIMER(xudc->soc->lmpitp_timer);
+		val &= ~(xudc->soc->lmpitp_timer_mask);
+		val |= xudc->soc->lmpitp_timer & xudc->soc->lmpitp_timer_mask;
 		xudc_writel(xudc, val, offset + SSPX_CORE_CNT30);
 	}
 
@@ -3658,6 +3680,7 @@ static struct tegra_xudc_soc tegra210_xudc_soc_data = {
 	.lfps_ping = 0xa,
 	.lfps_poll = 0xb0, /* 1.45us */
 	.lmpitp_timer = 0x978,
+	.lmpitp_timer_mask = GENMASK(19, 0),
 	.u3_timeout = 0x5dc0,
 	.u1_enable = false,
 	.u2_enable = true,
@@ -3677,6 +3700,7 @@ static struct tegra_xudc_soc tegra186_xudc_soc_data = {
 	.lfps_ping = 0xa,
 	.lfps_poll = 0xb0, /* 1.45us */
 	.lmpitp_timer = 0x978,
+	.lmpitp_timer_mask = GENMASK(19, 0),
 	.u3_timeout = 0x5dc0,
 	.u1_enable = true,
 	.u2_enable = true,
@@ -3696,6 +3720,7 @@ static struct tegra_xudc_soc tegra194_xudc_soc_data = {
 	.lfps_ping = 0xa,
 	.lfps_poll = 0xb0, /* 1.45us */
 	.lmpitp_timer = 0x978,
+	.lmpitp_timer_mask = GENMASK(19, 0),
 	.u3_timeout = 0x5dc0,
 	.u1_enable = true,
 	.u2_enable = true,
@@ -3715,6 +3740,7 @@ static struct tegra_xudc_soc tegra234_xudc_soc_data = {
 	.lfps_ping = 0xa,
 	.lfps_poll = 0xb0, /* 1.45us */
 	.lmpitp_timer = 0x978,
+	.lmpitp_timer_mask = GENMASK(19, 0),
 	.u3_timeout = 0x5dc0,
 	.u1_enable = true,
 	.u2_enable = true,
@@ -3733,7 +3759,27 @@ static struct tegra_xudc_soc tegra238_xudc_soc_data = {
 	.lfps_ping = 0xa,
 	.lfps_poll = 0xb0, /* 1.45us */
 	.lmpitp_timer = 0x978,
+	.lmpitp_timer_mask = GENMASK(19, 0),
 	.u3_timeout = 0x5dc0,
+	.u1_enable = true,
+	.u2_enable = true,
+	.lpm_enable = true,
+	.invalid_seq_num = false,
+	.pls_quirk = false,
+	.port_reset_quirk = false,
+	.has_ipfs = false,
+};
+
+static struct tegra_xudc_soc tegra264_xudc_soc_data = {
+	.clock_names = tegra186_xudc_clock_names,
+	.num_clks = ARRAY_SIZE(tegra186_xudc_clock_names),
+	.num_phys = 4,
+	.sspx_offset = 0x4000,
+	.crdthp_timer = 0x33,
+	.lfps_ping_trpt = 0x7a1200,
+	.lfps_poll = 0x3b, /* 1.466us */
+	.lmpitp_timer = 0xc9,
+	.lmpitp_timer_mask = GENMASK(11, 0),
 	.u1_enable = true,
 	.u2_enable = true,
 	.lpm_enable = true,
@@ -3763,6 +3809,10 @@ static const struct of_device_id tegra_xudc_of_match[] = {
 	{
 		.compatible = "nvidia,tegra238-xudc",
 		.data = &tegra238_xudc_soc_data
+	},
+	{
+		.compatible = "nvidia,tegra264-xudc",
+		.data = &tegra264_xudc_soc_data
 	},
 	{ }
 };
