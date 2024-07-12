@@ -69,12 +69,6 @@
 					shunt-resistor-micro-ohms = <2000>;
 				};
 			};
-
-			power-sensor@44 {
-				compatible = "ti,ina219";
-				reg = <0x44>;
-				shunt-resistor = <2000>;
-			};
 		};
 
 		rtc@c2a0000 {
