@@ -471,6 +471,8 @@ struct tegra_pmc {
 
 	struct notifier_block reboot_notifier;
 	struct syscore_ops syscore;
+
+	struct list_head node;
 };
 
 #if defined(CONFIG_ARM)
@@ -479,6 +481,8 @@ static struct tegra_pmc *early_pmc = &(struct tegra_pmc) {
 	.suspend_mode = TEGRA_SUSPEND_NOT_READY,
 };
 #endif
+
+static LIST_HEAD(pmc_list);
 
 static inline struct tegra_powergate *
 to_powergate(struct generic_pm_domain *domain)
@@ -3051,6 +3055,9 @@ static int tegra_pmc_probe(struct platform_device *pdev)
 
 	debugfs_create_file("powergate", 0444, NULL, pmc, &powergate_fops);
 
+	INIT_LIST_HEAD(&pmc->node);
+	list_add(&pmc->node, &pmc_list);
+
 	return 0;
 
 cleanup_powergates:
@@ -3182,32 +3189,39 @@ static void tegra186_pmc_process_wake_events(struct tegra_pmc *pmc, unsigned int
 
 static void tegra186_pmc_wake_syscore_resume(void)
 {
+	struct tegra_pmc *pmc;
 	u32 status, mask;
 	unsigned int i;
 
-	for (i = 0; i < pmc->soc->max_wake_vectors; i++) {
-		mask = readl(pmc->wake + WAKE_AOWAKE_TIER2_ROUTING(i));
-		status = readl(pmc->wake + WAKE_AOWAKE_STATUS_R(i)) & mask;
+	list_for_each_entry(pmc, &pmc_list, node) {
+		for (i = 0; i < pmc->soc->max_wake_vectors; i++) {
+			mask = readl(pmc->wake + WAKE_AOWAKE_TIER2_ROUTING(i));
+			status = readl(pmc->wake + WAKE_AOWAKE_STATUS_R(i)) & mask;
 
-		tegra186_pmc_process_wake_events(pmc, i, status);
+			tegra186_pmc_process_wake_events(pmc, i, status);
+		}
 	}
 }
 
 static int tegra186_pmc_wake_syscore_suspend(void)
 {
-	wke_read_sw_wake_status(pmc);
+	struct tegra_pmc *pmc;
 
-	/* flip the wakeup trigger for dual-edge triggered pads
-	 * which are currently asserting as wakeups
-	 */
-	bitmap_andnot(pmc->wake_cntrl_level_map, pmc->wake_type_dual_edge_map,
-		      pmc->wake_sw_status_map, pmc->soc->max_wake_events);
-	bitmap_or(pmc->wake_cntrl_level_map, pmc->wake_cntrl_level_map,
-		  pmc->wake_type_level_map, pmc->soc->max_wake_events);
+	list_for_each_entry(pmc, &pmc_list, node) {
+		wke_read_sw_wake_status(pmc);
 
-	/* Clear PMC Wake Status registers while going to suspend */
-	wke_clear_wake_status(pmc);
-	wke_write_wake_levels(pmc);
+		/* flip the wakeup trigger for dual-edge triggered pads
+		 * which are currently asserting as wakeups
+		 */
+		bitmap_andnot(pmc->wake_cntrl_level_map, pmc->wake_type_dual_edge_map,
+			      pmc->wake_sw_status_map, pmc->soc->max_wake_events);
+		bitmap_or(pmc->wake_cntrl_level_map, pmc->wake_cntrl_level_map,
+			  pmc->wake_type_level_map, pmc->soc->max_wake_events);
+
+		/* Clear PMC Wake Status registers while going to suspend */
+		wke_clear_wake_status(pmc);
+		wke_write_wake_levels(pmc);
+	}
 
 	return 0;
 }
