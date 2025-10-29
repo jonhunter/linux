@@ -1429,30 +1429,31 @@ tegra_pmc_core_pd_set_performance_state(struct generic_pm_domain *genpd,
 
 static int tegra_pmc_core_pd_add(struct tegra_pmc *pmc, struct device_node *np)
 {
-	struct generic_pm_domain *genpd;
+	struct tegra_powergate *pg;
 	const char *rname[] = { "core", NULL};
 	int err;
 
-	genpd = devm_kzalloc(pmc->dev, sizeof(*genpd), GFP_KERNEL);
-	if (!genpd)
+	pg = devm_kzalloc(pmc->dev, sizeof(*pg), GFP_KERNEL);
+	if (!pg)
 		return -ENOMEM;
 
-	genpd->name = "core";
-	genpd->flags = GENPD_FLAG_NO_SYNC_STATE;
-	genpd->set_performance_state = tegra_pmc_core_pd_set_performance_state;
+	pg->pmc = pmc;
+	pg->genpd.name = "core";
+	pg->genpd.flags = GENPD_FLAG_NO_SYNC_STATE;
+	pg->genpd.set_performance_state = tegra_pmc_core_pd_set_performance_state;
 
 	err = devm_pm_opp_set_regulators(pmc->dev, rname);
 	if (err)
 		return dev_err_probe(pmc->dev, err,
 				     "failed to set core OPP regulator\n");
 
-	err = pm_genpd_init(genpd, NULL, false);
+	err = pm_genpd_init(&pg->genpd, NULL, false);
 	if (err) {
 		dev_err(pmc->dev, "failed to init core genpd: %d\n", err);
 		return err;
 	}
 
-	err = of_genpd_add_provider_simple(np, genpd);
+	err = of_genpd_add_provider_simple(np, &pg->genpd);
 	if (err) {
 		dev_err(pmc->dev, "failed to add core genpd: %d\n", err);
 		goto remove_genpd;
@@ -1461,7 +1462,7 @@ static int tegra_pmc_core_pd_add(struct tegra_pmc *pmc, struct device_node *np)
 	return 0;
 
 remove_genpd:
-	pm_genpd_remove(genpd);
+	pm_genpd_remove(&pg->genpd);
 
 	return err;
 }
@@ -2622,6 +2623,7 @@ tegra_pmc_clk_out_register(struct tegra_pmc *pmc,
 	pmc_clk->offs = offset;
 	pmc_clk->mux_shift = data->mux_shift;
 	pmc_clk->force_en_shift = data->force_en_shift;
+	pmc_clk->pmc = pmc;
 
 	return clk_register(NULL, &pmc_clk->hw);
 }
@@ -2875,12 +2877,12 @@ static void tegra_pmc_init_common(struct tegra_pmc *pmc)
 			set_bit(i, pmc->powergates_available);
 }
 
+#if defined(CONFIG_PM_SLEEP) && defined(CONFIG_ARM)
 static void tegra_pmc_reset_suspend_mode(void *data)
 {
-	struct tegra_pmc *pmc = data;
-
-	pmc->suspend_mode = TEGRA_SUSPEND_NOT_READY;
+	early_pmc->suspend_mode = TEGRA_SUSPEND_NOT_READY;
 }
+#endif
 
 static int tegra_pmc_probe(struct platform_device *pdev)
 {
@@ -2896,28 +2898,32 @@ static int tegra_pmc_probe(struct platform_device *pdev)
 	 */
 	if (WARN_ON(!early_pmc->base || !early_pmc->soc))
 		return -ENODEV;
+
+#ifdef CONFIG_PM_SLEEP
+	err = devm_add_action_or_reset(&pdev->dev, tegra_pmc_reset_suspend_mode,
+				       pmc);
+	if (err)
+		return err;
+#endif
 #endif
 
 	pmc = devm_kzalloc(&pdev->dev, sizeof(*pmc), GFP_KERNEL);
 	if (!pmc)
 		return -ENOMEM;
 
+	mutex_init(&pmc->powergates_lock);
 	pmc->soc = device_get_match_data(&pdev->dev);
-	tegra_pmc_init_common(pmc);
 
 	err = tegra_pmc_parse_dt(pmc, pdev->dev.of_node);
 	if (err < 0)
-		return err;
-
-	err = devm_add_action_or_reset(&pdev->dev, tegra_pmc_reset_suspend_mode,
-				       pmc);
-	if (err)
 		return err;
 
 	/* take over the memory region from the early initialization */
 	pmc->base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(pmc->base))
 		return PTR_ERR(pmc->base);
+
+	tegra_pmc_init_common(pmc);
 
 	if (pmc->soc->has_single_mmio_aperture) {
 		pmc->wake = pmc->base;
