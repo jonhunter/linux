@@ -2055,6 +2055,8 @@ static int tegra_pmc_parse_dt(struct tegra_pmc *pmc, struct device_node *np)
 		if (pmc->suspend_mode == TEGRA_SUSPEND_LP0)
 			pmc->suspend_mode = TEGRA_SUSPEND_LP1;
 
+	early_pmc->suspend_mode = pmc->suspend_mode;
+
 	pmc->lp0_vec_phys = values[0];
 	pmc->lp0_vec_size = values[1];
 
@@ -3048,7 +3050,8 @@ static void tegra_pmc_init_common(struct tegra_pmc *pmc)
 {
 	unsigned int i;
 
-	pmc->tz_only = tegra_pmc_detect_tz_only(pmc);
+	if (pmc->soc->maybe_tz_only)
+		pmc->tz_only = tegra_pmc_detect_tz_only(pmc);
 
 	/* Create a bitmap of the available and valid partitions */
 	for (i = 0; i < pmc->soc->num_powergates; i++)
@@ -3082,7 +3085,6 @@ static int tegra_pmc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	pmc->soc = device_get_match_data(&pdev->dev);
-	tegra_pmc_init_common(pmc);
 
 	err = tegra_pmc_parse_dt(pmc, pdev->dev.of_node);
 	if (err < 0)
@@ -3122,6 +3124,8 @@ static int tegra_pmc_probe(struct platform_device *pdev)
 			pmc->scratch = NULL;
 		}
 	}
+
+	tegra_pmc_init_common(pmc);
 
 	pmc->clk = devm_clk_get_optional(&pdev->dev, "pclk");
 	if (IS_ERR(pmc->clk))
