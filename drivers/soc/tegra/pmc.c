@@ -1803,6 +1803,7 @@ static int tegra_io_pad_get_voltage(struct tegra_pmc *pmc, enum tegra_io_pad id)
 	return TEGRA_IO_PAD_VOLTAGE_3V3;
 }
 
+#if defined(CONFIG_ARM)
 static int tegra_pmc_parse_dt(struct tegra_pmc *pmc, struct device_node *np)
 {
 	u32 value, values[2];
@@ -1877,6 +1878,7 @@ static int tegra_pmc_parse_dt(struct tegra_pmc *pmc, struct device_node *np)
 
 	return 0;
 }
+#endif
 
 static int tegra_pmc_init(struct tegra_pmc *pmc)
 {
@@ -2903,9 +2905,11 @@ static int tegra_pmc_probe(struct platform_device *pdev)
 
 	pmc->soc = device_get_match_data(&pdev->dev);
 
+#if defined(CONFIG_ARM)
 	err = tegra_pmc_parse_dt(pmc, pdev->dev.of_node);
 	if (err < 0)
 		return err;
+#endif
 
 	err = devm_add_action_or_reset(&pdev->dev, tegra_pmc_reset_suspend_mode,
 				       pmc);
