@@ -3294,7 +3294,6 @@
 			interrupts = <65 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&bpmp TEGRA264_CLK_CLK_S>;
 			clock-names = "rtc";
-			status = "disabled";
 		};
 
 		serial@c4e0000 {
