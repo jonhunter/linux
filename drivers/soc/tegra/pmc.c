@@ -3137,6 +3137,9 @@ static int tegra_pmc_probe(struct platform_device *pdev)
 		}
 
 		pmc->rate = clk_get_rate(pmc->clk);
+#if defined(CONFIG_ARM)
+		early_pmc->rate = pmc->rate;
+#endif
 	}
 
 	err = tegra_pmc_init(pmc);
