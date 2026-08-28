@@ -428,6 +428,76 @@
 			status = "disabled";
 		};
 
+		xusb_padctl: xusb_padctl@3520000 {
+			compatible = "nvidia,tegra238-xusb-padctl";
+			reg = <0x0 0x03520000 0x0 0x20000>,
+			     <0x0 0x03540000 0x0 0x10000>;
+			reg-names = "padctl", "ao";
+			interrupts = <0 167 0x4>;
+			resets = <&bpmp TEGRA238_RESET_XUSB_PADCTL>;
+			reset-names = "padctl";
+			status = "disabled";
+
+			pads {
+				usb2 {
+					clocks = <&bpmp TEGRA238_CLK_USB2_TRK>;
+					clock-names = "trk";
+
+					lanes {
+						usb2-0 {
+							status = "disabled";
+							#phy-cells = <0>;
+						};
+						usb2-1 {
+							status = "disabled";
+							#phy-cells = <0>;
+						};
+						usb2-2 {
+							status = "disabled";
+							#phy-cells = <0>;
+						};
+					};
+				};
+				usb3 {
+					lanes {
+						usb3-0 {
+							status = "disabled";
+							#phy-cells = <0>;
+						};
+						usb3-1 {
+							status = "disabled";
+							#phy-cells = <0>;
+						};
+						usb3-2 {
+							status = "disabled";
+							#phy-cells = <0>;
+						};
+					};
+				};
+			};
+
+			ports {
+				usb2-0 {
+					status = "disabled";
+				};
+				usb2-1 {
+					status = "disabled";
+				};
+				usb2-2 {
+					status = "disabled";
+				};
+				usb3-0 {
+					status = "disabled";
+				};
+				usb3-1 {
+					status = "disabled";
+				};
+				usb3-2 {
+					status = "disabled";
+				};
+			};
+		};
+
 		fuse@3810000 {
 			compatible = "nvidia,tegra234-efuse";
 			reg = <0x0 0x03810000 0x0 0x19000>;
