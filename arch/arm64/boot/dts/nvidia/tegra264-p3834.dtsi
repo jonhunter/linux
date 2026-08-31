@@ -55,6 +55,12 @@
 		};
 	};
 
+	bus@a800000000 {
+		padctl@8680000 {
+			vclamp-usb-supply = <&vdd_1v8_ao>;
+		};
+	};
+
 	bpmp {
 		i2c {
 			status = "okay";
