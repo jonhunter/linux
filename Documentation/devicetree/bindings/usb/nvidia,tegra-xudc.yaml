@@ -23,6 +23,7 @@ properties:
           - nvidia,tegra186-xudc # For Tegra186
           - nvidia,tegra194-xudc # For Tegra194
           - nvidia,tegra234-xudc # For Tegra234
+          - nvidia,tegra238-xudc # For Tegra238
 
   reg:
     minItems: 2
@@ -73,6 +74,16 @@ properties:
   iommus:
     maxItems: 1
 
+  resets:
+    items:
+      - description: XUSB device controller reset
+      - description: XUSB SuperSpeed reset
+
+  reset-names:
+    items:
+      - const: xusb_dev
+      - const: xusb_ss
+
   power-domains:
     items:
       - description: XUSBB(device) power-domain
@@ -117,13 +128,31 @@ required:
   - interrupts
   - clocks
   - clock-names
-  - power-domains
-  - power-domain-names
   - nvidia,xusb-padctl
   - phys
   - phy-names
 
 allOf:
+  - if:
+      properties:
+        compatible:
+          contains:
+            const: nvidia,tegra238-xudc
+    then:
+      properties:
+        power-domains: false
+        power-domain-names: false
+      required:
+        - resets
+        - reset-names
+    else:
+      properties:
+        resets: false
+        reset-names: false
+      required:
+        - power-domains
+        - power-domain-names
+
   - if:
       properties:
         compatible:
@@ -152,6 +181,7 @@ allOf:
               - nvidia,tegra186-xudc
               - nvidia,tegra194-xudc
               - nvidia,tegra234-xudc
+              - nvidia,tegra238-xudc
     then:
       properties:
         reg:
@@ -170,6 +200,7 @@ allOf:
             enum:
               - nvidia,tegra194-xudc
               - nvidia,tegra234-xudc
+              - nvidia,tegra238-xudc
     then:
       required:
         - dma-coherent
