@@ -19,6 +19,7 @@ properties:
   compatible:
     enum:
       - nvidia,tegra234-xusb
+      - nvidia,tegra238-xusb
       - nvidia,tegra264-xusb
 
   reg:
@@ -140,6 +141,16 @@ properties:
         - usb3-2
         - usb3-3
 
+  resets:
+    items:
+      - description: XUSB host controller reset
+      - description: XUSB SuperSpeed reset
+
+  reset-names:
+    items:
+      - const: xusb_host
+      - const: xusb_ss
+
   power-domains:
     items:
       - description: XUSBC power domain (for Host and USB 2.0)
@@ -162,11 +173,40 @@ required:
   - nvidia,xusb-padctl
   - phys
   - phy-names
-  - power-domains
-  - power-domain-names
 
 allOf:
   - $ref: usb-xhci.yaml
+  - if:
+      properties:
+        compatible:
+          contains:
+            const: nvidia,tegra238-xusb
+    then:
+      properties:
+        power-domains: false
+        power-domain-names: false
+        phys:
+          maxItems: 6
+        phy-names:
+          maxItems: 6
+          items:
+            enum:
+              - usb2-0
+              - usb2-1
+              - usb2-2
+              - usb3-0
+              - usb3-1
+              - usb3-2
+      required:
+        - resets
+        - reset-names
+    else:
+      properties:
+        resets: false
+        reset-names: false
+      required:
+        - power-domains
+        - power-domain-names
 
   - if:
       properties:
