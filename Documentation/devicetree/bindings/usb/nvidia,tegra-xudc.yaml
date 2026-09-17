@@ -24,6 +24,7 @@ properties:
           - nvidia,tegra194-xudc # For Tegra194
           - nvidia,tegra234-xudc # For Tegra234
           - nvidia,tegra238-xudc # For Tegra238
+          - nvidia,tegra264-xudc # For Tegra264
 
   reg:
     minItems: 2
@@ -154,6 +155,7 @@ allOf:
               - nvidia,tegra194-xudc
               - nvidia,tegra234-xudc
               - nvidia,tegra238-xudc
+              - nvidia,tegra264-xudc
     then:
       properties:
         reg:
@@ -173,6 +175,7 @@ allOf:
               - nvidia,tegra194-xudc
               - nvidia,tegra234-xudc
               - nvidia,tegra238-xudc
+              - nvidia,tegra264-xudc
     then:
       required:
         - dma-coherent
