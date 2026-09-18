@@ -1114,7 +1114,7 @@
 			    "rx3", "tx3", "rx4", "tx4", "rx5", "tx5",
 			    "rx6", "tx6", "rx7", "tx7", "rx8", "tx8",
 			    "rx9", "tx9";
-		ranges = <0x7030000 0x0 0x70300000 0x10000>;
+		ranges = <0x70300000 0x0 0x70300000 0x10000>;
 		#address-cells = <1>;
 		#size-cells = <1>;
 

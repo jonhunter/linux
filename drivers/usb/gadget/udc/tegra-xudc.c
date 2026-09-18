@@ -143,42 +143,47 @@
 #define  HSFSPI_COUNT13_U2_RESUME_K_DURATION(x) ((x) & \
 				HSFSPI_COUNT13_U2_RESUME_K_DURATION_MASK)
 #define BLCG 0x840
-#define SSPX_CORE_CNT0 0x610
+#define SSPX_CORE_CNT0 0x10
 #define  SSPX_CORE_CNT0_PING_TBURST_MASK GENMASK(7, 0)
 #define  SSPX_CORE_CNT0_PING_TBURST(x) ((x) & SSPX_CORE_CNT0_PING_TBURST_MASK)
-#define SSPX_CORE_CNT30 0x688
-#define  SSPX_CORE_CNT30_LMPITP_TIMER_MASK GENMASK(19, 0)
-#define  SSPX_CORE_CNT30_LMPITP_TIMER(x) ((x) & \
-					SSPX_CORE_CNT30_LMPITP_TIMER_MASK)
-#define SSPX_CORE_CNT32 0x690
+#define SSPX_CORE_CNT13 0x44
+#define  SSPX_CORE_CNT13_CRDTHP_TIMER_MASK GENMASK(11, 0)
+#define  SSPX_CORE_CNT13_CRDTHP_TIMER(x) ((x) & \
+				SSPX_CORE_CNT13_CRDTHP_TIMER_MASK)
+#define SSPX_CORE_CNT27 0x7c
+#define  SSPX_CORE_CNT27_PING_LFPS_TRPT_MASK GENMASK(29, 0)
+#define  SSPX_CORE_CNT27_PING_LFPS_TRPT(x) ((x) & \
+				SSPX_CORE_CNT27_PING_LFPS_TRPT_MASK)
+#define SSPX_CORE_CNT30 0x88
+#define SSPX_CORE_CNT32 0x90
 #define  SSPX_CORE_CNT32_POLL_TBURST_MAX_MASK GENMASK(7, 0)
 #define  SSPX_CORE_CNT32_POLL_TBURST_MAX(x) ((x) & \
 					SSPX_CORE_CNT32_POLL_TBURST_MAX_MASK)
-#define SSPX_CORE_CNT56 0x6fc
+#define SSPX_CORE_CNT56 0xfc
 #define  SSPX_CORE_CNT56_SCD_BIT0_TRPT_MAX_MASK GENMASK(19, 0)
 #define  SSPX_CORE_CNT56_SCD_BIT0_TRPT_MAX(x) ((x) & \
 				SSPX_CORE_CNT56_SCD_BIT0_TRPT_MAX_MASK)
-#define SSPX_CORE_CNT57 0x700
+#define SSPX_CORE_CNT57 0x100
 #define  SSPX_CORE_CNT57_SCD_BIT1_TRPT_MAX_MASK GENMASK(19, 0)
 #define  SSPX_CORE_CNT57_SCD_BIT1_TRPT_MAX(x) ((x) & \
 				SSPX_CORE_CNT57_SCD_BIT1_TRPT_MAX_MASK)
-#define SSPX_CORE_CNT65 0x720
+#define SSPX_CORE_CNT65 0x120
 #define  SSPX_CORE_CNT65_TX_SCD_END_TRPT_MID_MASK GENMASK(19, 0)
 #define  SSPX_CORE_CNT65_TX_SCD_END_TRPT_MID(x) ((x) & \
 				SSPX_CORE_CNT65_TX_SCD_END_TRPT_MID_MASK)
-#define SSPX_CORE_CNT66 0x724
+#define SSPX_CORE_CNT66 0x124
 #define  SSPX_CORE_CNT66_TX_SCD_BIT0_TRPT_MID_MASK GENMASK(19, 0)
 #define  SSPX_CORE_CNT66_TX_SCD_BIT0_TRPT_MID(x) ((x) & \
 				SSPX_CORE_CNT66_TX_SCD_BIT0_TRPT_MID_MASK)
-#define SSPX_CORE_CNT67 0x728
+#define SSPX_CORE_CNT67 0x128
 #define  SSPX_CORE_CNT67_TX_SCD_BIT1_TRPT_MID_MASK GENMASK(19, 0)
 #define  SSPX_CORE_CNT67_TX_SCD_BIT1_TRPT_MID(x) ((x) & \
 				SSPX_CORE_CNT67_TX_SCD_BIT1_TRPT_MID_MASK)
-#define SSPX_CORE_CNT72 0x73c
+#define SSPX_CORE_CNT72 0x13c
 #define  SSPX_CORE_CNT72_SCD_LFPS_TIMEOUT_MASK GENMASK(19, 0)
 #define  SSPX_CORE_CNT72_SCD_LFPS_TIMEOUT(x) ((x) & \
 				SSPX_CORE_CNT72_SCD_LFPS_TIMEOUT_MASK)
-#define SSPX_CORE_PADCTL4 0x750
+#define SSPX_CORE_PADCTL4 0x150
 #define  SSPX_CORE_PADCTL4_RXDAT_VLD_TIMEOUT_U3_MASK GENMASK(19, 0)
 #define  SSPX_CORE_PADCTL4_RXDAT_VLD_TIMEOUT_U3(x) ((x) & \
 				SSPX_CORE_PADCTL4_RXDAT_VLD_TIMEOUT_U3_MASK)
@@ -548,6 +553,14 @@ struct tegra_xudc_soc {
 	const char * const *clock_names;
 	unsigned int num_clks;
 	unsigned int num_phys;
+	unsigned int sspx_offset;
+	unsigned int crdthp_timer;
+	unsigned int lfps_ping;
+	unsigned int lfps_ping_trpt;
+	unsigned int lfps_poll;
+	unsigned int lmpitp_timer;
+	unsigned int lmpitp_timer_mask;
+	unsigned int u3_timeout;
 	bool u1_enable;
 	bool u2_enable;
 	bool lpm_enable;
@@ -629,35 +642,35 @@ static void tegra_xudc_limit_port_speed(struct tegra_xudc *xudc)
 	u32 val;
 
 	/* limit port speed to gen 1 */
-	val = xudc_readl(xudc, SSPX_CORE_CNT56);
+	val = xudc_readl(xudc, xudc->soc->sspx_offset + SSPX_CORE_CNT56);
 	val &= ~(SSPX_CORE_CNT56_SCD_BIT0_TRPT_MAX_MASK);
 	val |= SSPX_CORE_CNT56_SCD_BIT0_TRPT_MAX(0x260);
-	xudc_writel(xudc, val, SSPX_CORE_CNT56);
+	xudc_writel(xudc, val, xudc->soc->sspx_offset + SSPX_CORE_CNT56);
 
-	val = xudc_readl(xudc, SSPX_CORE_CNT57);
+	val = xudc_readl(xudc, xudc->soc->sspx_offset + SSPX_CORE_CNT57);
 	val &= ~(SSPX_CORE_CNT57_SCD_BIT1_TRPT_MAX_MASK);
 	val |= SSPX_CORE_CNT57_SCD_BIT1_TRPT_MAX(0x6D6);
-	xudc_writel(xudc, val, SSPX_CORE_CNT57);
+	xudc_writel(xudc, val, xudc->soc->sspx_offset + SSPX_CORE_CNT57);
 
-	val = xudc_readl(xudc, SSPX_CORE_CNT65);
+	val = xudc_readl(xudc, xudc->soc->sspx_offset + SSPX_CORE_CNT65);
 	val &= ~(SSPX_CORE_CNT65_TX_SCD_END_TRPT_MID_MASK);
 	val |= SSPX_CORE_CNT65_TX_SCD_END_TRPT_MID(0x4B0);
-	xudc_writel(xudc, val, SSPX_CORE_CNT66);
+	xudc_writel(xudc, val, xudc->soc->sspx_offset + SSPX_CORE_CNT65);
 
-	val = xudc_readl(xudc, SSPX_CORE_CNT66);
+	val = xudc_readl(xudc, xudc->soc->sspx_offset + SSPX_CORE_CNT66);
 	val &= ~(SSPX_CORE_CNT66_TX_SCD_BIT0_TRPT_MID_MASK);
 	val |= SSPX_CORE_CNT66_TX_SCD_BIT0_TRPT_MID(0x4B0);
-	xudc_writel(xudc, val, SSPX_CORE_CNT66);
+	xudc_writel(xudc, val, xudc->soc->sspx_offset + SSPX_CORE_CNT66);
 
-	val = xudc_readl(xudc, SSPX_CORE_CNT67);
+	val = xudc_readl(xudc, xudc->soc->sspx_offset + SSPX_CORE_CNT67);
 	val &= ~(SSPX_CORE_CNT67_TX_SCD_BIT1_TRPT_MID_MASK);
 	val |= SSPX_CORE_CNT67_TX_SCD_BIT1_TRPT_MID(0x4B0);
-	xudc_writel(xudc, val, SSPX_CORE_CNT67);
+	xudc_writel(xudc, val, xudc->soc->sspx_offset + SSPX_CORE_CNT67);
 
-	val = xudc_readl(xudc, SSPX_CORE_CNT72);
+	val = xudc_readl(xudc, xudc->soc->sspx_offset + SSPX_CORE_CNT72);
 	val &= ~(SSPX_CORE_CNT72_SCD_LFPS_TIMEOUT_MASK);
 	val |= SSPX_CORE_CNT72_SCD_LFPS_TIMEOUT(0x10);
-	xudc_writel(xudc, val, SSPX_CORE_CNT72);
+	xudc_writel(xudc, val, xudc->soc->sspx_offset + SSPX_CORE_CNT72);
 }
 
 static void tegra_xudc_restore_port_speed(struct tegra_xudc *xudc)
@@ -665,35 +678,35 @@ static void tegra_xudc_restore_port_speed(struct tegra_xudc *xudc)
 	u32 val;
 
 	/* restore port speed to gen2 */
-	val = xudc_readl(xudc, SSPX_CORE_CNT56);
+	val = xudc_readl(xudc, xudc->soc->sspx_offset + SSPX_CORE_CNT56);
 	val &= ~(SSPX_CORE_CNT56_SCD_BIT0_TRPT_MAX_MASK);
 	val |= SSPX_CORE_CNT56_SCD_BIT0_TRPT_MAX(0x438);
-	xudc_writel(xudc, val, SSPX_CORE_CNT56);
+	xudc_writel(xudc, val, xudc->soc->sspx_offset + SSPX_CORE_CNT56);
 
-	val = xudc_readl(xudc, SSPX_CORE_CNT57);
+	val = xudc_readl(xudc, xudc->soc->sspx_offset + SSPX_CORE_CNT57);
 	val &= ~(SSPX_CORE_CNT57_SCD_BIT1_TRPT_MAX_MASK);
 	val |= SSPX_CORE_CNT57_SCD_BIT1_TRPT_MAX(0x528);
-	xudc_writel(xudc, val, SSPX_CORE_CNT57);
+	xudc_writel(xudc, val, xudc->soc->sspx_offset + SSPX_CORE_CNT57);
 
-	val = xudc_readl(xudc, SSPX_CORE_CNT65);
+	val = xudc_readl(xudc, xudc->soc->sspx_offset + SSPX_CORE_CNT65);
 	val &= ~(SSPX_CORE_CNT65_TX_SCD_END_TRPT_MID_MASK);
 	val |= SSPX_CORE_CNT65_TX_SCD_END_TRPT_MID(0xE10);
-	xudc_writel(xudc, val, SSPX_CORE_CNT66);
+	xudc_writel(xudc, val, xudc->soc->sspx_offset + SSPX_CORE_CNT66);
 
-	val = xudc_readl(xudc, SSPX_CORE_CNT66);
+	val = xudc_readl(xudc, xudc->soc->sspx_offset + SSPX_CORE_CNT66);
 	val &= ~(SSPX_CORE_CNT66_TX_SCD_BIT0_TRPT_MID_MASK);
 	val |= SSPX_CORE_CNT66_TX_SCD_BIT0_TRPT_MID(0x348);
-	xudc_writel(xudc, val, SSPX_CORE_CNT66);
+	xudc_writel(xudc, val, xudc->soc->sspx_offset + SSPX_CORE_CNT66);
 
-	val = xudc_readl(xudc, SSPX_CORE_CNT67);
+	val = xudc_readl(xudc, xudc->soc->sspx_offset + SSPX_CORE_CNT67);
 	val &= ~(SSPX_CORE_CNT67_TX_SCD_BIT1_TRPT_MID_MASK);
 	val |= SSPX_CORE_CNT67_TX_SCD_BIT1_TRPT_MID(0x5a0);
-	xudc_writel(xudc, val, SSPX_CORE_CNT67);
+	xudc_writel(xudc, val, xudc->soc->sspx_offset + SSPX_CORE_CNT67);
 
-	val = xudc_readl(xudc, SSPX_CORE_CNT72);
+	val = xudc_readl(xudc, xudc->soc->sspx_offset + SSPX_CORE_CNT72);
 	val &= ~(SSPX_CORE_CNT72_SCD_LFPS_TIMEOUT_MASK);
 	val |= SSPX_CORE_CNT72_SCD_LFPS_TIMEOUT(0x1c21);
-	xudc_writel(xudc, val, SSPX_CORE_CNT72);
+	xudc_writel(xudc, val, xudc->soc->sspx_offset + SSPX_CORE_CNT72);
 }
 
 static void tegra_xudc_device_mode_on(struct tegra_xudc *xudc)
@@ -3390,7 +3403,7 @@ static void tegra_xudc_fpci_ipfs_init(struct tegra_xudc *xudc)
 
 static void tegra_xudc_device_params_init(struct tegra_xudc *xudc)
 {
-	u32 val, imod;
+	u32 val, imod, offset = xudc->soc->sspx_offset;
 
 	val = xudc_readl(xudc, BLCG);
 	if (xudc->soc->has_ipfs) {
@@ -3408,23 +3421,43 @@ static void tegra_xudc_device_params_init(struct tegra_xudc *xudc)
 	if (xudc->soc->port_speed_quirk)
 		tegra_xudc_limit_port_speed(xudc);
 
-	/* Set a reasonable U3 exit timer value. */
-	val = xudc_readl(xudc, SSPX_CORE_PADCTL4);
-	val &= ~(SSPX_CORE_PADCTL4_RXDAT_VLD_TIMEOUT_U3_MASK);
-	val |= SSPX_CORE_PADCTL4_RXDAT_VLD_TIMEOUT_U3(0x5dc0);
-	xudc_writel(xudc, val, SSPX_CORE_PADCTL4);
+	if (xudc->soc->u3_timeout) {
+		/* Set U3 exit timer value. */
+		val = xudc_readl(xudc, offset + SSPX_CORE_PADCTL4);
+		val &= ~(SSPX_CORE_PADCTL4_RXDAT_VLD_TIMEOUT_U3_MASK);
+		val |= SSPX_CORE_PADCTL4_RXDAT_VLD_TIMEOUT_U3(xudc->soc->u3_timeout);
+		xudc_writel(xudc, val, offset + SSPX_CORE_PADCTL4);
+	}
 
-	/* Default ping LFPS tBurst is too large. */
-	val = xudc_readl(xudc, SSPX_CORE_CNT0);
-	val &= ~(SSPX_CORE_CNT0_PING_TBURST_MASK);
-	val |= SSPX_CORE_CNT0_PING_TBURST(0xa);
-	xudc_writel(xudc, val, SSPX_CORE_CNT0);
+	if (xudc->soc->lfps_ping) {
+		/* Default ping LFPS tBurst is too large. */
+		val = xudc_readl(xudc, offset + SSPX_CORE_CNT0);
+		val &= ~(SSPX_CORE_CNT0_PING_TBURST_MASK);
+		val |= SSPX_CORE_CNT0_PING_TBURST(xudc->soc->lfps_ping);
+		xudc_writel(xudc, val, offset + SSPX_CORE_CNT0);
+	}
 
-	/* Default tPortConfiguration timeout is too small. */
-	val = xudc_readl(xudc, SSPX_CORE_CNT30);
-	val &= ~(SSPX_CORE_CNT30_LMPITP_TIMER_MASK);
-	val |= SSPX_CORE_CNT30_LMPITP_TIMER(0x978);
-	xudc_writel(xudc, val, SSPX_CORE_CNT30);
+	if (xudc->soc->crdthp_timer) {
+		val = xudc_readl(xudc, offset + SSPX_CORE_CNT13);
+		val &= ~(SSPX_CORE_CNT13_CRDTHP_TIMER_MASK);
+		val |= SSPX_CORE_CNT13_CRDTHP_TIMER(xudc->soc->crdthp_timer);
+		xudc_writel(xudc, val, offset + SSPX_CORE_CNT13);
+	}
+
+	if (xudc->soc->lfps_ping_trpt) {
+		val = xudc_readl(xudc, offset + SSPX_CORE_CNT27);
+		val &= ~(SSPX_CORE_CNT27_PING_LFPS_TRPT_MASK);
+		val |= SSPX_CORE_CNT27_PING_LFPS_TRPT(xudc->soc->lfps_ping_trpt);
+		xudc_writel(xudc, val, offset + SSPX_CORE_CNT27);
+	}
+
+	if (xudc->soc->lmpitp_timer) {
+		/* Default tPortConfiguration timeout is too small. */
+		val = xudc_readl(xudc, offset + SSPX_CORE_CNT30);
+		val &= ~(xudc->soc->lmpitp_timer_mask);
+		val |= xudc->soc->lmpitp_timer & xudc->soc->lmpitp_timer_mask;
+		xudc_writel(xudc, val, offset + SSPX_CORE_CNT30);
+	}
 
 	if (xudc->soc->lpm_enable) {
 		/* Set L1 resume duration to 95 us. */
@@ -3434,14 +3467,16 @@ static void tegra_xudc_device_params_init(struct tegra_xudc *xudc)
 		xudc_writel(xudc, val, HSFSPI_COUNT13);
 	}
 
-	/*
-	 * Compliance suite appears to be violating polling LFPS tBurst max
-	 * of 1.4us.  Send 1.45us instead.
-	 */
-	val = xudc_readl(xudc, SSPX_CORE_CNT32);
-	val &= ~(SSPX_CORE_CNT32_POLL_TBURST_MAX_MASK);
-	val |= SSPX_CORE_CNT32_POLL_TBURST_MAX(0xb0);
-	xudc_writel(xudc, val, SSPX_CORE_CNT32);
+	if (xudc->soc->lfps_poll) {
+		/*
+		 * Compliance suite appears to be violating polling LFPS tBurst
+		 * max of 1.4us.
+		 */
+		val = xudc_readl(xudc, offset + SSPX_CORE_CNT32);
+		val &= ~(SSPX_CORE_CNT32_POLL_TBURST_MAX_MASK);
+		val |= SSPX_CORE_CNT32_POLL_TBURST_MAX(xudc->soc->lfps_poll);
+		xudc_writel(xudc, val, offset + SSPX_CORE_CNT32);
+	}
 
 	/* Direct HS/FS port instance to RxDetect. */
 	val = xudc_readl(xudc, CFG_DEV_FE);
@@ -3641,6 +3676,12 @@ static struct tegra_xudc_soc tegra210_xudc_soc_data = {
 	.clock_names = tegra210_xudc_clock_names,
 	.num_clks = ARRAY_SIZE(tegra210_xudc_clock_names),
 	.num_phys = 4,
+	.sspx_offset = 0x600,
+	.lfps_ping = 0xa,
+	.lfps_poll = 0xb0, /* 1.45us */
+	.lmpitp_timer = 0x978,
+	.lmpitp_timer_mask = GENMASK(19, 0),
+	.u3_timeout = 0x5dc0,
 	.u1_enable = false,
 	.u2_enable = true,
 	.lpm_enable = false,
@@ -3655,6 +3696,12 @@ static struct tegra_xudc_soc tegra186_xudc_soc_data = {
 	.clock_names = tegra186_xudc_clock_names,
 	.num_clks = ARRAY_SIZE(tegra186_xudc_clock_names),
 	.num_phys = 4,
+	.sspx_offset = 0x600,
+	.lfps_ping = 0xa,
+	.lfps_poll = 0xb0, /* 1.45us */
+	.lmpitp_timer = 0x978,
+	.lmpitp_timer_mask = GENMASK(19, 0),
+	.u3_timeout = 0x5dc0,
 	.u1_enable = true,
 	.u2_enable = true,
 	.lpm_enable = false,
@@ -3669,6 +3716,12 @@ static struct tegra_xudc_soc tegra194_xudc_soc_data = {
 	.clock_names = tegra186_xudc_clock_names,
 	.num_clks = ARRAY_SIZE(tegra186_xudc_clock_names),
 	.num_phys = 4,
+	.sspx_offset = 0x600,
+	.lfps_ping = 0xa,
+	.lfps_poll = 0xb0, /* 1.45us */
+	.lmpitp_timer = 0x978,
+	.lmpitp_timer_mask = GENMASK(19, 0),
+	.u3_timeout = 0x5dc0,
 	.u1_enable = true,
 	.u2_enable = true,
 	.lpm_enable = true,
@@ -3683,6 +3736,50 @@ static struct tegra_xudc_soc tegra234_xudc_soc_data = {
 	.clock_names = tegra186_xudc_clock_names,
 	.num_clks = ARRAY_SIZE(tegra186_xudc_clock_names),
 	.num_phys = 4,
+	.sspx_offset = 0x600,
+	.lfps_ping = 0xa,
+	.lfps_poll = 0xb0, /* 1.45us */
+	.lmpitp_timer = 0x978,
+	.lmpitp_timer_mask = GENMASK(19, 0),
+	.u3_timeout = 0x5dc0,
+	.u1_enable = true,
+	.u2_enable = true,
+	.lpm_enable = true,
+	.invalid_seq_num = false,
+	.pls_quirk = false,
+	.port_reset_quirk = false,
+	.has_ipfs = false,
+};
+
+static struct tegra_xudc_soc tegra238_xudc_soc_data = {
+	.clock_names = tegra186_xudc_clock_names,
+	.num_clks = ARRAY_SIZE(tegra186_xudc_clock_names),
+	.num_phys = 3,
+	.sspx_offset = 0x600,
+	.lfps_ping = 0xa,
+	.lfps_poll = 0xb0, /* 1.45us */
+	.lmpitp_timer = 0x978,
+	.lmpitp_timer_mask = GENMASK(19, 0),
+	.u3_timeout = 0x5dc0,
+	.u1_enable = true,
+	.u2_enable = true,
+	.lpm_enable = true,
+	.invalid_seq_num = false,
+	.pls_quirk = false,
+	.port_reset_quirk = false,
+	.has_ipfs = false,
+};
+
+static struct tegra_xudc_soc tegra264_xudc_soc_data = {
+	.clock_names = tegra186_xudc_clock_names,
+	.num_clks = ARRAY_SIZE(tegra186_xudc_clock_names),
+	.num_phys = 4,
+	.sspx_offset = 0x4000,
+	.crdthp_timer = 0x33,
+	.lfps_ping_trpt = 0x7a1200,
+	.lfps_poll = 0x3b, /* 1.466us */
+	.lmpitp_timer = 0xc9,
+	.lmpitp_timer_mask = GENMASK(11, 0),
 	.u1_enable = true,
 	.u2_enable = true,
 	.lpm_enable = true,
@@ -3708,6 +3805,14 @@ static const struct of_device_id tegra_xudc_of_match[] = {
 	{
 		.compatible = "nvidia,tegra234-xudc",
 		.data = &tegra234_xudc_soc_data
+	},
+	{
+		.compatible = "nvidia,tegra238-xudc",
+		.data = &tegra238_xudc_soc_data
+	},
+	{
+		.compatible = "nvidia,tegra264-xudc",
+		.data = &tegra264_xudc_soc_data
 	},
 	{ }
 };

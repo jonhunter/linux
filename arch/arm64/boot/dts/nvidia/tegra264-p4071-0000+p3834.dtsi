@@ -14,8 +14,116 @@
 	};
 
 	bus@0 {
+		rtc@c2c0000 {
+			status = "okay";
+		};
+
 		pwm@c6a0000 {
 			status = "okay";
+		};
+	};
+
+	bus@a800000000 {
+		usb@8670000 {
+			phys = <&{/bus@a800000000/padctl@8680000/pads/usb2/lanes/usb2-0}>,
+			       <&{/bus@a800000000/padctl@8680000/pads/usb3/lanes/usb3-1}>;
+			phy-names = "usb2-0", "usb3-1";
+			status = "okay";
+		};
+
+		padctl@8680000 {
+			status = "okay";
+
+			pads {
+				usb2 {
+					lanes {
+						usb2-0 {
+							status = "okay";
+						};
+
+						usb2-1 {
+							status = "okay";
+						};
+
+						usb2-2 {
+							status = "okay";
+						};
+
+						usb2-3 {
+							status = "okay";
+						};
+					};
+				};
+
+				usb3 {
+					lanes {
+						usb3-0 {
+							status = "okay";
+						};
+
+						usb3-1 {
+							status = "okay";
+						};
+
+						usb3-2 {
+							status = "okay";
+						};
+					};
+				};
+			};
+
+			ports {
+				usb2-0 {
+					mode = "otg";
+					usb-role-switch;
+					role-switch-default-mode = "peripheral";
+					status = "okay";
+				};
+
+				usb2-1 {
+					mode = "host";
+					status = "okay";
+				};
+
+				usb2-2 {
+					mode = "host";
+					status = "okay";
+				};
+
+				usb2-3 {
+					mode = "host";
+					status = "okay";
+				};
+
+				usb3-0 {
+					nvidia,usb2-companion = <1>;
+					status = "okay";
+				};
+
+				usb3-1 {
+					nvidia,usb2-companion = <0>;
+					status = "okay";
+				};
+
+				usb3-2 {
+					nvidia,usb2-companion = <3>;
+					status = "okay";
+				};
+			};
+		};
+
+		usb@aa10000 {
+			status = "okay";
+
+			phys = <&{/bus@a800000000/padctl@8680000/pads/usb2/lanes/usb2-0}>,
+			       <&{/bus@a800000000/padctl@8680000/pads/usb2/lanes/usb2-1}>,
+			       <&{/bus@a800000000/padctl@8680000/pads/usb2/lanes/usb2-2}>,
+			       <&{/bus@a800000000/padctl@8680000/pads/usb2/lanes/usb2-3}>,
+			       <&{/bus@a800000000/padctl@8680000/pads/usb3/lanes/usb3-0}>,
+			       <&{/bus@a800000000/padctl@8680000/pads/usb3/lanes/usb3-1}>,
+			       <&{/bus@a800000000/padctl@8680000/pads/usb3/lanes/usb3-2}>;
+			phy-names = "usb2-0", "usb2-1", "usb2-2", "usb2-3",
+				    "usb3-0", "usb3-1", "usb3-2";
 		};
 	};
 
