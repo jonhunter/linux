@@ -39,6 +39,13 @@
 	};
 
 	bus@a800000000 {
+		usb@8670000 {
+			phys = <&{/bus@a800000000/padctl@8680000/pads/usb2/lanes/usb2-0}>,
+			       <&{/bus@a800000000/padctl@8680000/pads/usb3/lanes/usb3-1}>;
+			phy-names = "usb2-0", "usb3-0";
+			status = "okay";
+		};
+
 		padctl@8680000 {
 			vclamp-usb-supply = <&vdd_1v8_ao>;
 			avdd-usb-supply = <&vdd_3v3_ao>;
@@ -84,7 +91,9 @@
 
 			ports {
 				usb2-0 {
-					mode = "host";
+					mode = "otg";
+					usb-role-switch;
+					role-switch-default-mode = "peripheral";
 					vbus-supply = <&vdd_5v0_sys>;
 					status = "okay";
 				};
