@@ -152,6 +152,19 @@ properties:
 
   dma-coherent: true
 
+required:
+  - compatible
+  - reg
+  - reg-names
+  - interrupts
+  - clocks
+  - clock-names
+  - nvidia,xusb-padctl
+  - phys
+  - phy-names
+  - power-domains
+  - power-domain-names
+
 allOf:
   - $ref: usb-xhci.yaml
 
