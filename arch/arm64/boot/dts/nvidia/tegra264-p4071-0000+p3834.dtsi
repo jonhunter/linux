@@ -89,8 +89,6 @@
 			ports {
 				usb2-0 {
 					mode = "otg";
-					usb-role-switch;
-					role-switch-default-mode = "peripheral";
 					status = "okay";
 				};
 
