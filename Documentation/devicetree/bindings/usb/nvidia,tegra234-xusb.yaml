@@ -152,6 +152,23 @@ properties:
 
   dma-coherent: true
 
+required:
+  - compatible
+  - reg
+  - reg-names
+  - interrupts
+  - clocks
+  - clock-names
+  - interconnects
+  - interconnect-names
+  - iommus
+  - nvidia,xusb-padctl
+  - phys
+  - phy-names
+  - power-domains
+  - power-domain-names
+  - dma-coherent
+
 allOf:
   - $ref: usb-xhci.yaml
 
@@ -225,4 +242,6 @@ examples:
 
         phys = <&pad_lanes_usb2_0>;
         phy-names = "usb2-0";
+
+        dma-coherent;
     };
