@@ -4,6 +4,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/mailbox/tegra186-hsp.h>
 #include <dt-bindings/reset/nvidia,tegra238.h>
+#include <dt-bindings/memory/nvidia,tegra238-mc.h>
 
 / {
 	compatible = "nvidia,tegra238";
@@ -496,6 +497,73 @@
 					status = "disabled";
 				};
 			};
+		};
+
+		tegra_xudc: usb@3550000 {
+			compatible = "nvidia,tegra238-xudc";
+			reg = <0x0 0x03550000 0x0 0x8000>,
+				<0x0 0x03558000 0x0 0x8000>;
+			reg-names = "base", "fpci";
+			interrupts = <0 166 0x4>;
+			clocks = <&bpmp TEGRA238_CLK_XUSB_CORE_DEV>,
+				<&bpmp TEGRA238_CLK_XUSB_SS_SUPERSPEED>,
+				<&bpmp TEGRA238_CLK_XUSB_SS>,
+				<&bpmp TEGRA238_CLK_XUSB_FS>;
+			clock-names = "dev", "ss", "ss_src", "fs_src";
+			resets = <&bpmp TEGRA238_RESET_XUSB_DEV>,
+				 <&bpmp TEGRA238_RESET_XUSB_SS>;
+			reset-names = "xusb_dev",
+				      "xusb_ss";
+
+			nvidia,xusb-padctl = <&xusb_padctl>;
+
+			iommus = <&smmu_niso TEGRA238_SID_XUSB_DEV>;
+			dma-coherent;
+
+			status = "disabled";
+		};
+
+		tegra_xhci: usb@3610000 {
+			compatible = "nvidia,tegra238-xusb";
+			reg = <0x0 0x03610000 0x0 0x40000>,
+			      <0x0 0x03600000 0x0 0x10000>,
+			      <0x0 0x03650000 0x0 0x10000>;
+			reg-names = "hcd", "fpci", "bar2";
+			interrupts-extended = <&gic 0 163 0x4>,
+					      <&gic 0 164 0x4>,
+					      <&tegra_pmc 76 0x4>,
+					      <&tegra_pmc 77 0x4>,
+					      <&tegra_pmc 78 0x4>,
+					      <&tegra_pmc 79 0x4>,
+					      <&tegra_pmc 80 0x4>,
+					      <&tegra_pmc 81 0x4>;
+			clocks = <&bpmp TEGRA238_CLK_XUSB_CORE_HOST>,
+				<&bpmp TEGRA238_CLK_XUSB_FALCON>,
+				<&bpmp TEGRA238_CLK_XUSB_SS_SUPERSPEED>,
+				<&bpmp TEGRA238_CLK_XUSB_SS>,
+				<&bpmp TEGRA238_CLK_XUSB_CORE_MUX>,
+				<&bpmp TEGRA238_CLK_XUSB_FS>,
+				<&bpmp TEGRA238_CLK_UTMIP_PLL>,
+				<&bpmp TEGRA238_CLK_CLK_M>,
+				<&bpmp TEGRA238_CLK_PLLE>;
+			clock-names = "xusb_host", "xusb_falcon_src", "xusb_ss",
+				"xusb_ss_src", "xusb_hs_src", "xusb_fs_src",
+				"pll_u_480m", "clk_m", "pll_e";
+			resets = <&bpmp TEGRA238_RESET_XUSB_HOST>,
+				 <&bpmp TEGRA238_RESET_XUSB_SS>;
+			reset-names = "xusb_host",
+				      "xusb_ss";
+
+			nvidia,xusb-padctl = <&xusb_padctl>;
+
+			interconnects = <&mc TEGRA238_MEMORY_CLIENT_XUSB_HOSTR &emc>,
+					<&mc TEGRA238_MEMORY_CLIENT_XUSB_HOSTW &emc>;
+			interconnect-names = "dma-mem", "write";
+
+			iommus = <&smmu_niso TEGRA238_SID_XUSB_HOST>;
+			dma-coherent;
+
+			status = "disabled";
 		};
 
 		fuse@3810000 {
