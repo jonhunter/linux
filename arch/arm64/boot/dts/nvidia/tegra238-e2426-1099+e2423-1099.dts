@@ -52,13 +52,7 @@
 				usb2-0 {
 					mode = "peripheral";
 					vbus-supply = <&battery_reg>;
-					usb-role-switch;
 					status = "okay";
-					/* The port only works on device mode and needs to be default on.
-					 * We do not have any singal from CCG4 which indicate the cable
-					 * connected now.
-					 */
-					role-switch-default-mode = "peripheral";
 				};
 				usb2-1 {
 					mode = "host";

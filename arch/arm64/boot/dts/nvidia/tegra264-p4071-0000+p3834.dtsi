@@ -92,8 +92,6 @@
 			ports {
 				usb2-0 {
 					mode = "otg";
-					usb-role-switch;
-					role-switch-default-mode = "peripheral";
 					vbus-supply = <&vdd_5v0_sys>;
 					status = "okay";
 				};
