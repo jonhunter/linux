@@ -101,6 +101,7 @@
 					mode = "otg";
 					vbus-supply = <&vdd_5v0_sys>;
 					status = "okay";
+					usb-role-switch;
 				};
 
 				/* hub */
