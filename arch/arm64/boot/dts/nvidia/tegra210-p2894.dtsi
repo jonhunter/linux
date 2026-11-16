@@ -1345,22 +1345,16 @@
 			pinctrl-0 = <&max77620_default>;
 
 			fps {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
 				fps0 {
-					reg = <0>;
 					maxim,fps-event-source = <MAX77620_FPS_EVENT_SRC_EN0>;
 				};
 
 				fps1 {
-					reg = <1>;
 					maxim,fps-event-source = <MAX77620_FPS_EVENT_SRC_EN1>;
 					maxim,device-state-on-disabled-event = <MAX77620_FPS_INACTIVE_STATE_SLEEP>;
 				};
 
 				fps2 {
-					reg = <2>;
 					maxim,fps-event-source = <MAX77620_FPS_EVENT_SRC_EN0>;
 				};
 			};
